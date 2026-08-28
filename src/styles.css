@@ -41,3 +41,46 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .sticker { border-radius: 4px; }
 .sticker.center { cursor: default; }
 .sticker.empty { border: 1px dashed rgba(255, 255, 255, 0.6); }
+
+/* --- Palette --- */
+.palette {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 16px auto;
+}
+.chip {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.chip.active {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 3px #fff, 0 0 0 5px #2f7fd6;
+}
+
+/* --- Flip button --- */
+.flip-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  margin: 12px auto;
+}
+.flip-btn .flip-cube { font-size: 26px; }
