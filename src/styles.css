@@ -1,4 +1,43 @@
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
-.app { min-height: 100vh; }
+.app {
+  min-height: 100vh;
+  /* Sky-blue background, bluer toward the edges (req 3). */
+  background: radial-gradient(circle at 50% 45%, #cfeaff 0%, #7fbdf0 55%, #2f7fd6 100%);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* --- CSS-3D cube --- */
+.scene { perspective: 800px; width: 260px; height: 260px; margin: 24px auto; }
+.cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .6s ease;
+}
+.cube.default { transform: rotateX(-24deg) rotateY(-36deg); }
+.cube.flipped { transform: rotateX(-24deg) rotateY(144deg); }
+.face {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  left: 70px;
+  top: 70px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  background: #111;
+  border-radius: 6px;
+}
+.face-top   { transform: rotateX(90deg) translateZ(60px); }
+.face-left  { transform: rotateY(-90deg) translateZ(60px); }
+.face-right { transform: translateZ(60px); }
+.sticker { border-radius: 4px; }
+.sticker.center { cursor: default; }
+.sticker.empty { border: 1px dashed rgba(255, 255, 255, 0.6); }
