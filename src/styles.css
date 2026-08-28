@@ -141,3 +141,59 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   background: #1f2430;
   color: #f5f5f5;
 }
+
+/* ---- Solve overlay (/solve) ---- */
+.app.solve {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.solve-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  box-sizing: border-box;
+}
+.solve-header .back {
+  text-decoration: none;
+  color: #333;
+  font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #f0f0f0;
+}
+.solve-header .back:hover { background: #e0e0e0; }
+.solve-header .progress {
+  font-variant-numeric: tabular-nums;
+  color: #666;
+  font-size: 14px;
+}
+.solve-caption {
+  text-align: center;
+  line-height: 1.7;
+  color: #444;
+  margin: 0;
+  padding: 0 16px;
+}
+.solve-caption b { color: #222; }
+.solve-controls {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px 32px;
+}
+.solve-controls button {
+  font-size: 15px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #1f2430;
+  color: #f5f5f5;
+  cursor: pointer;
+}
+.solve-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
