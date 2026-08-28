@@ -10,7 +10,7 @@ export default function Tutorial() {
         <h1>三阶魔方教程</h1>
       </header>
       <nav className="tut-tabs">
-        {TUTORIAL.map(s => <a key={s.anchor} href={`#${s.anchor}`}>{s.title.replace(/^[0-9.]+\s*/, '').slice(0,4)}</a>)}
+        {TUTORIAL.map(s => <a key={s.anchor} href={`#${s.anchor}`}>{s.tab}</a>)}
       </nav>
       <div className="tut-body">
         {TUTORIAL.map(s => <TutorialSection key={s.anchor} section={s} />)}

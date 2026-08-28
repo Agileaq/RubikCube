@@ -5,4 +5,4 @@ export type CubeState = Record<Face, (Color | null)[]>
 
 export interface Move { face: Face; dir: 1 | -1 | 2 } // 1=cw, -1=ccw, 2=180
 export interface SolveStep { stage: string; moves: Move[]; note: string }
-export interface TutorialSection { anchor: string; title: string; body: string; algs: string[] }
+export interface TutorialSection { anchor: string; tab: string; title: string; body: string; algs: string[] }

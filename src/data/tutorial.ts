@@ -3,6 +3,7 @@ import type { TutorialSection } from '../types'
 export const TUTORIAL: TutorialSection[] = [
   {
     anchor: 'structure',
+    tab: '结构',
     title: '1. 魔方结构与转动符号',
     body:
       '三阶魔方由 26 个块组成：6 个中心块、12 个棱块（两种颜色）和 8 个角块（三种颜色）。' +
@@ -14,6 +15,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'cross',
+    tab: '白十字',
     title: '2. 第一步：白色十字',
     body:
       '把白色中心朝上，先在顶面拼出一个白色十字。' +
@@ -24,6 +26,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'first-layer',
+    tab: '白面',
     title: '3. 第二步：复原白色面（第一层）',
     body:
       '在白色十字的基础上，把 4 个白色角块归位，完成整个白色面，同时让 4 个侧面各自出现一个 T 字（颜色对齐）。' +
@@ -33,6 +36,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'middle',
+    tab: '中层',
     title: '4. 第三步：复原中层棱块',
     body:
       '把已完成的白色面翻到底部，现在还原中间一层的 4 个棱块。' +
@@ -43,6 +47,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'yellow-cross',
+    tab: '黄十字',
     title: '5. 第四步：对好顶层黄色十字',
     body:
       '现在顶面是黄色。目标是在顶层拼出黄色十字（此时只看棱块，不管角块和侧面颜色）。' +
@@ -53,6 +58,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'yellow-face',
+    tab: '黄面',
     title: '6. 第五步：复原顶层黄色面',
     body:
       '黄色十字完成后，接下来让整个顶面变成纯黄色，也就是把 4 个黄色角块的黄色都翻到顶面。' +
@@ -62,6 +68,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'll-corners',
+    tab: '凹字',
     title: '7. 第六步：复原顶层凹字（归位角块）',
     body:
       '顶面全黄后，检查 4 个顶层角块的位置是否正确（不看朝向，只看它是否处在三色匹配的正确角位）。' +
@@ -71,6 +78,7 @@ export const TUTORIAL: TutorialSection[] = [
   },
   {
     anchor: 'll-edges',
+    tab: '棱块',
     title: '8. 第七步：复原顶层棱块（收尾）',
     body:
       '最后一步是把顶层 4 个棱块归位，完成整个魔方。' +

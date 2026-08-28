@@ -5,10 +5,101 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   min-height: 100vh;
   /* Sky-blue background, bluer toward the edges (req 3). */
   background: radial-gradient(circle at 50% 45%, #cfeaff 0%, #7fbdf0 55%, #2f7fd6 100%);
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-attachment: fixed;
+  padding:
+    calc(env(safe-area-inset-top) + 8px)
+    calc(env(safe-area-inset-right) + 16px)
+    calc(env(safe-area-inset-bottom) + 16px)
+    calc(env(safe-area-inset-left) + 16px);
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* --- Paint screen layout (top → bottom) --- */
+.app.paint { gap: 4px; }
+.paint-header {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 4px;
+}
+.paint-header .spacer { width: 40px; }
+.title-fill {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  letter-spacing: 2px;
+}
+.book-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  text-decoration: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.hint {
+  margin: 4px auto 8px;
+  max-width: 320px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.solve-link {
+  display: inline-block;
+  margin: 6px auto;
+  padding: 12px 32px;
+  font-size: 17px;
+  font-weight: 600;
+  text-decoration: none;
+  color: #fff;
+  background: #34a853;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+.unsolvable {
+  margin: 6px auto;
+  max-width: 320px;
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #b3261e;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 12px;
+}
+.reset-btn {
+  margin: 10px auto 4px;
+  padding: 9px 24px;
+  font-size: 15px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+.build-info {
+  margin: 8px auto 0;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.85);
+  background: transparent;
+  border: none;
+  cursor: pointer;
 }
 
 /* --- CSS-3D cube --- */
@@ -86,17 +177,23 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .flip-btn .flip-cube { font-size: 26px; }
 
 /* --- Tutorial --- */
+.app.tutorial {
+  align-items: stretch;
+  padding: 0;
+  background: #fff;
+}
 .tut-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: calc(env(safe-area-inset-top) + 12px) 16px 12px;
 }
 .tut-header .back {
   text-decoration: none;
   color: #2f7fd6;
   font-size: 16px;
 }
+.tut-header h1 { margin: 0; font-size: 20px; font-weight: 700; color: #222; }
 .tut-tabs {
   position: sticky;
   top: 0;
@@ -120,6 +217,7 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   background: #f0f0f0;
 }
 .tut-tabs a:hover { background: #e0e0e0; }
+.tut-tabs a:active { background: #2f7fd6; color: #fff; }
 .tut-body { padding: 8px 16px 48px; }
 .tut-section {
   padding: 16px 0;
@@ -161,24 +259,64 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   text-decoration: none;
   color: #333;
   font-size: 14px;
-  padding: 6px 12px;
+  padding: 6px 14px;
   border-radius: 999px;
-  background: #f0f0f0;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
-.solve-header .back:hover { background: #e0e0e0; }
+.solve-header .back:hover { background: #fff; }
 .solve-header .progress {
   font-variant-numeric: tabular-nums;
   color: #666;
   font-size: 14px;
 }
+/* --- Current move notation (physical-cube follow-along) --- */
+.current-move {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.current-move .move-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.current-move .move-notation {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  padding: 8px 22px;
+  border-radius: 16px;
+  background: rgba(31, 36, 48, 0.9);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+.current-move .move-done {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  padding: 8px 22px;
+  border-radius: 16px;
+  background: rgba(52, 168, 83, 0.95);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.current-move .move-prev {
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: rgba(255, 255, 255, 0.75);
+}
 .solve-caption {
   text-align: center;
   line-height: 1.7;
-  color: #444;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
   margin: 0;
+  max-width: 340px;
   padding: 0 16px;
 }
-.solve-caption b { color: #222; }
+.solve-caption b { color: #fff; font-weight: 700; }
 .solve-controls {
   display: flex;
   gap: 12px;
@@ -186,12 +324,14 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 }
 .solve-controls button {
   font-size: 15px;
-  padding: 10px 20px;
+  font-weight: 600;
+  padding: 11px 22px;
   border: none;
-  border-radius: 8px;
-  background: #1f2430;
+  border-radius: 999px;
+  background: rgba(31, 36, 48, 0.92);
   color: #f5f5f5;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 .solve-controls button:disabled {
   opacity: 0.4;
