@@ -3,7 +3,7 @@
 一个用于三阶魔方填色与求解的渐进式网页应用 (PWA)，纯客户端运行、数据仅存于本地设备。
 使用 React + Vite + TypeScript 构建，求解器按需懒加载（代码分包），部署于 GitHub Pages。
 
-在线地址（占位）：<https://<user>.github.io/RubikCube/>
+在线地址：<https://agileaq.github.io/RubikCube/>
 
 ## 功能
 
