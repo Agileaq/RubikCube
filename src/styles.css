@@ -339,6 +339,8 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .solve-caption b { color: #fff; font-weight: 700; }
 .solve-controls {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 12px;
   padding: 8px 16px 32px;
 }
@@ -356,4 +358,30 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .solve-controls button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+.solve-controls .speed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #fff;
+  margin-left: 8px;
+}
+.solve-controls .speed input[type=range] {
+  width: 140px;
+  accent-color: #2f7fd6;
+}
+
+/* --- 3D canvas container (Cube3D) --- */
+.cube3d-wrap {
+  width: 320px;
+  height: 360px;
+  max-width: 90vw;
+  margin: 8px auto;
+}
+.cube3d-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 16px;
 }
