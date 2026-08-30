@@ -1,6 +1,18 @@
-export function SolveControls({ index, total, onPrev, onNext, onPlay, playing }: {
-  index: number; total: number; onPrev: () => void; onNext: () => void; onPlay: () => void; playing: boolean
+export function SolveControls({ index, total, onPrev, onNext, onPlay, playing, stepMs, onStepMs }: {
+  index: number
+  total: number
+  onPrev: () => void
+  onNext: () => void
+  onPlay: () => void
+  playing: boolean
+  // Task 9 wires these to a speed slider; for now they keep the prop surface
+  // stable so Solve.tsx typechecks before the slider exists.
+  stepMs: number
+  onStepMs: (ms: number) => void
 }) {
+  // Props accepted but not yet rendered (Task 9 adds the slider + its test).
+  void stepMs
+  void onStepMs
   const atEnd = index >= total
   return (
     <div className="solve-controls">
