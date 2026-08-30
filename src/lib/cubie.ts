@@ -22,8 +22,8 @@ const key = (cs: (Color|null)[]) => cs.some(x=>x===null) ? null : [...cs].sort()
 function refSets(facelets: [Face, number][][]) {
   return facelets.map(cubie => cubie.map(([f]) => CENTERS[f]))
 }
-const CORNER_REF = refSets(CORNER_FACELETS)
-const EDGE_REF = refSets(EDGE_FACELETS)
+export const CORNER_REF = refSets(CORNER_FACELETS)
+export const EDGE_REF = refSets(EDGE_FACELETS)
 const cornerKey = (i: number) => [...CORNER_REF[i]].sort().join('')
 const edgeKey = (i: number) => [...EDGE_REF[i]].sort().join('')
 

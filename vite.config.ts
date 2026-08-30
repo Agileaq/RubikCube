@@ -18,18 +18,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'prompt',
-      includeAssets: ['icons/icon.svg'],
+      includeAssets: ['icons/icon.svg', 'icons/icon-180.png', 'icons/icon-512.png'],
       manifest: {
         name: 'Rubik Cube',
         short_name: 'RubikCube',
         start_url: '/RubikCube/',
         scope: '/RubikCube/',
         display: 'standalone',
-        background_color: '#4a90d9',
+        background_color: '#000000',
         theme_color: '#4a90d9',
         icons: [
-          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
-          { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
     }),

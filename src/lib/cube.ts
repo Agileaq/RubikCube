@@ -3,9 +3,12 @@ import type { Color, Face, CubeState, Orientation } from '../types'
 export const FACES: Face[] = ['U', 'D', 'L', 'R', 'F', 'B']
 export const COLORS: Color[] = ['W', 'R', 'O', 'Y', 'G', 'B']
 
-// Fixed color scheme. U/L/R chosen so default view shows W/O/G (req 4);
-// D/B/F carry Y/B/R so the flipped view shows Y/B/R (req 5).
-export const CENTERS: Record<Face, Color> = { U: 'W', D: 'Y', L: 'O', R: 'G', F: 'R', B: 'B' }
+// Fixed color scheme — standard Western: opposite pairs are White↔Yellow,
+// Orange↔Red, Green↔Blue. Green is FRONT (F) and Red is RIGHT (R) so that the
+// default corner-on view (U/L/F) shows three MUTUALLY ADJACENT faces:
+// white top, orange left, green right (req 4). The flipped view shows the
+// opposite corner D/B/R: yellow / blue / red (req 5).
+export const CENTERS: Record<Face, Color> = { U: 'W', D: 'Y', L: 'O', R: 'R', F: 'G', B: 'B' }
 
 export function emptyCube(): CubeState {
   const c = {} as CubeState
@@ -38,12 +41,17 @@ export function remainingCounts(c: CubeState): Record<Color, number> {
     c[f].forEach((x, i) => { if (i !== 4 && x) placed[x] += 1 })
   }
   const out = {} as Record<Color, number>
-  for (const col of COLORS) out[col] = Math.max(0, 8 - placed[col])
+  // 8 non-center stickers of each color remain to be placed; goes negative
+  // (e.g. -1) when the user over-fills a color, as a visible warning.
+  for (const col of COLORS) out[col] = 8 - placed[col]
   return out
 }
 
 export function visibleFaces(o: Orientation): { top: Face; left: Face; right: Face } {
+  // Three MUTUALLY ADJACENT faces meeting at a corner (never opposite faces).
+  // default = U/L/F corner (white / orange / green); flipped = the opposite
+  // D/B/R corner (yellow / blue / red).
   return o === 'default'
-    ? { top: 'U', left: 'L', right: 'R' }
-    : { top: 'D', left: 'B', right: 'F' }
+    ? { top: 'U', left: 'L', right: 'F' }
+    : { top: 'D', left: 'B', right: 'R' }
 }

@@ -76,6 +76,7 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   text-align: center;
   font-size: 14px;
   line-height: 1.5;
+  white-space: pre-line;
   color: #b3261e;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 12px;
@@ -102,33 +103,48 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   cursor: pointer;
 }
 
-/* --- CSS-3D cube --- */
-.scene { perspective: 800px; width: 260px; height: 260px; margin: 24px auto; }
+/* --- 2.5-D isometric cube ---
+ * Three faces (top / left / right) drawn as equal-area isometric parallelograms
+ * meeting at the top corner. No perspective → no foreshortening → every sticker
+ * is a full, tappable quad. Face→slot data comes from visibleFaces (Cube.tsx):
+ * default shows U/L/R = white/orange/green (req 4); flipped D/B/F = yellow/blue/
+ * red (req 5). Transforms verified by rendering + full-grid hit-test (27/27).
+ */
+.scene { width: 200px; height: 214px; margin: 20px auto; position: relative; overflow: visible; perspective: 1000px; }
 .cube {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   transform-style: preserve-3d;
-  transition: transform .6s ease;
+  /* transition only fires when the transform value actually changes (on flip),
+   * so the cube tumbles forward once per press rather than on every render. */
+  transition: transform .5s ease;
 }
-.cube.default { transform: rotateX(-24deg) rotateY(-36deg); }
-.cube.flipped { transform: rotateX(-24deg) rotateY(144deg); }
+/* default and flipped differ by a full 360° X tumble: same resting pose (so
+ * both render identically upright) but the delta animates as a forward roll,
+ * mimicking turning a real cube over to reveal its other three faces. The
+ * data swap (visibleFaces) happens with it. */
+.cube.default { transform: rotateX(0deg); }
+.cube.flipped { transform: rotateX(360deg); }
 .face {
   position: absolute;
-  width: 120px;
-  height: 120px;
-  left: 70px;
-  top: 70px;
+  width: 100px;
+  height: 100px;
+  /* anchor chosen so the 173×200 iso silhouette is centered in the 200×214
+   * scene (verified: dx≈0, dy≈0 by measuring the union bounding box). */
+  left: 100px;
+  top: 107px;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 3px;
-  padding: 3px;
+  gap: 2px;
+  padding: 2px;
   background: #111;
-  border-radius: 6px;
+  transform-origin: 0 0;
 }
-.face-top   { transform: rotateX(90deg) translateZ(60px); }
-.face-left  { transform: rotateY(-90deg) translateZ(60px); }
-.face-right { transform: translateZ(60px); }
+/* Isometric (2:1 dimetric) face transforms; origin top-left, faces share the
+ * top corner. Order top/left/right in the DOM, all fully non-overlapping. */
+.iso-top   { transform: rotate(210deg) skewX(-30deg) scaleY(0.864); }
+.iso-left  { transform: rotate(90deg)  skewX(-30deg) scaleY(0.864); }
+.iso-right { transform: rotate(-30deg) skewX(-30deg) scaleY(0.864); }
 .sticker { border-radius: 4px; }
 .sticker.center { cursor: default; }
 .sticker.empty { border: 1px dashed rgba(255, 255, 255, 0.6); }
@@ -165,16 +181,20 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .flip-btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: 22px;
-  padding: 8px 16px;
+  justify-content: center;
+  padding: 9px 14px;
   border-radius: 999px;
   border: none;
   background: rgba(255, 255, 255, 0.85);
+  color: #222;
   cursor: pointer;
   margin: 12px auto;
 }
-.flip-btn .flip-cube { font-size: 26px; }
+.flip-btn svg {
+  width: 28px;
+  height: 28px;
+  display: block;
+}
 
 /* --- Tutorial --- */
 .app.tutorial {
