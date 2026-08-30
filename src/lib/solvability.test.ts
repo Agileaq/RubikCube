@@ -1,7 +1,17 @@
 import { describe, it, expect } from 'vitest'
+import type { Color, CubeState, Face } from '../types'
 import { solvedCube } from './cube'
 import { applyMoves, parseMoves } from './moves'
 import { validate, UNSOLVABLE_MESSAGE, permutationParity } from './solvability'
+
+function fromCode(s: string): CubeState {
+  const c = {} as CubeState
+  for (const p of s.split('|')) {
+    const [f, cs] = p.split(':')
+    c[f as Face] = cs.split('') as Color[]
+  }
+  return c
+}
 
 describe('solvability', () => {
   it('solved cube is solvable', () => {
@@ -21,6 +31,7 @@ describe('solvability', () => {
     const res = validate(c)
     expect(res.solvable).toBe(false)
     expect(res.reason).toBe(UNSOLVABLE_MESSAGE)
+    expect(res.detail).toContain('原地扭转')
   })
 
   it('a single flipped edge is unsolvable (eo sum != 0 mod 2)', () => {
@@ -48,7 +59,27 @@ describe('solvability', () => {
     expect(permutationParity([1,0,2,3])).toBe(1)
   })
 
-  it('message is verbatim', () => {
+  it('impossible fill reports duplicated/missing pieces and their slots', () => {
+    // state with duplicated corner/edge pieces and missing ones
+    const c = fromCode('U:OWWOWWOWW|D:YYRYYRYYR|L:GGGOOYBBB|R:BBBWRRGGG|F:WRRGGGOOY|B:RRWBBBYOO')
+    const res = validate(c)
+    expect(res.solvable).toBe(false)
+    expect(res.reason).toBe(UNSOLVABLE_MESSAGE)
+    expect(res.detail).toContain('白蓝红×2(在U·R·F、U·B·R两处)')
+    expect(res.detail).toContain('白绿橙×2(在U·F·L、U·L·B两处)')
+    expect(res.detail).toContain('缺失角块:白红绿')
+    expect(res.detail).toContain('缺失角块:白橙蓝')
+    expect(res.detail).toContain('白红×2(在U·F、U·B两处)')
+    expect(res.detail).toContain('黄橙×2(在D·F、D·B两处)')
+    expect(res.detail).toContain('缺失棱块:白橙')
+    expect(res.detail).toContain('缺失棱块:黄红')
+  })
+
+  it('message is verbatim and detail is undefined when solvable', () => {
     expect(UNSOLVABLE_MESSAGE).toBe('填色状态不可解，1.先检查填色状态与手上魔方状态是否一致。2.如果魔方被转角或者拆装错了，将导致无法还原(即不可解)')
+    const res = validate(solvedCube())
+    expect(res.solvable).toBe(true)
+    expect(res.reason).toBeUndefined()
+    expect(res.detail).toBeUndefined()
   })
 })

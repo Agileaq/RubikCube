@@ -8,7 +8,7 @@ import { validate } from '../lib/solvability'
 export interface AppValue {
   cube: CubeState; brush: Color; orientation: Orientation
   remaining: Record<Color, number>; full: boolean
-  validation: { solvable: boolean; reason?: string } | null
+  validation: { solvable: boolean; reason?: string; detail?: string } | null
   setBrush(c: Color): void
   paintSticker(face: Face, index: number): void
   flip(): void
@@ -33,7 +33,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setBrush,
     paintSticker(face, index) {
       if (index === 4) return
-      setCube(prev => { const next = cloneCube(prev); next[face][index] = brush; return next })
+      setCube(prev => { const next = cloneCube(prev); next[face][index] = next[face][index] === brush ? null : brush; return next })
     },
     flip() { setOrientation(o => (o === 'default' ? 'flipped' : 'default')) },
     reset() { clearPaint(); setCube(emptyCube()); setOrientation('default') },
