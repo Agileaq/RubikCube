@@ -63,7 +63,8 @@ export function arrowGeometry(spec: ArrowSpec): {
     const a = (i / steps) * sweep * dir
     pts2d.push([Math.cos(a) * r, Math.sin(a) * r])
   }
-  // map 2D (u,v) on the face plane to 3D, offset outward by sign*0.55
+  // map 2D (u,v) on the face plane to 3D, offset outward just past the face
+  // surface (GAP 1.08 + half-cubie 0.5 ≈ 1.58; 1.65 sits the arrow in front)
   const off = spec.sign * 1.65
   const points: number[][] = pts2d.map(([u, v]) => {
     if (spec.axis === 'x') return [off, u, v]
