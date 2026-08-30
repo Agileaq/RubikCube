@@ -64,7 +64,7 @@ export function arrowGeometry(spec: ArrowSpec): {
     pts2d.push([Math.cos(a) * r, Math.sin(a) * r])
   }
   // map 2D (u,v) on the face plane to 3D, offset outward by sign*0.55
-  const off = spec.sign * 0.55
+  const off = spec.sign * 1.65
   const points: number[][] = pts2d.map(([u, v]) => {
     if (spec.axis === 'x') return [off, u, v]
     if (spec.axis === 'y') return [u, off, v]
