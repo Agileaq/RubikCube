@@ -10,8 +10,17 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
-import { Cube3D, cubieMeshData, animationProgress, isDone } from './Cube3D'
+// Mock @react-three/drei: Line/Text render as plain divs (so we can assert on
+// props), OrbitControls is a no-op. arrowGeometry is the jsdom-testable surface.
+vi.mock('@react-three/drei', () => ({
+  Line: (props: any) => <div data-testid="line" data-points={JSON.stringify(props.points)} />,
+  Text: (props: any) => <div data-testid="text" data-str={props.children} />,
+  OrbitControls: () => null,
+}))
+
+import { Cube3D, cubieMeshData, animationProgress, isDone, arrowGeometry } from './Cube3D'
 import { solvedCube } from '../lib/cube'
+import { arrowSpec } from '../lib/cube3d'
 
 describe('Cube3D', () => {
   it('cubieMeshData returns 27 entries with positions and 6 face colors', () => {
@@ -36,5 +45,23 @@ describe('Cube3D', () => {
   it('isDone is true at/after stepMs and false before', () => {
     expect(isDone(1999, 2000)).toBe(false)
     expect(isDone(2000, 2000)).toBe(true)
+  })
+})
+
+describe('arrowGeometry', () => {
+  it('dir=2 arrow has showX2 true and a long sweep (>10 sampled points)', () => {
+    const g = arrowGeometry(arrowSpec('F', 2))
+    expect(g.showX2).toBe(true)
+    expect(g.points.length).toBeGreaterThan(10)
+  })
+
+  it('dir=1 arrow has showX2 false', () => {
+    expect(arrowGeometry(arrowSpec('F', 1)).showX2).toBe(false)
+  })
+
+  it('ccw vs cw reverse the point order (visualDir)', () => {
+    const cw = arrowGeometry(arrowSpec('U', 1)).points
+    const ccw = arrowGeometry(arrowSpec('U', -1)).points
+    expect(ccw).not.toEqual(cw)
   })
 })

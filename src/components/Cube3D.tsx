@@ -1,12 +1,15 @@
 import { Canvas, useFrame } from '@react-three/fiber'
+import { Line, OrbitControls, Text } from '@react-three/drei'
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import {
   applyLayerTurn,
+  arrowSpec as makeArrow,
   cubiesFromState,
   layerPositions,
   turnDirection,
 } from '../lib/cube3d'
+import type { ArrowSpec } from '../lib/cube3d'
 import type { CubeState, Color, Move } from '../types'
 
 const HEX: Record<Color, string> = {
@@ -33,6 +36,89 @@ export const animationProgress = (elapsedMs: number, stepMs: number) => {
   return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
 }
 export const isDone = (elapsedMs: number, stepMs: number) => elapsedMs >= stepMs
+
+// ---------------------------------------------------------------------------
+// Arrow overlay on the turning face (Task 7)
+// ---------------------------------------------------------------------------
+// `arrowGeometry` is the jsdom-testable surface (Line/Text/OrbitControls from
+// drei are mocked in tests). It builds an arc on the face plane — offset
+// outward by ~0.55 along the face normal — sampling `steps` points along a
+// sweep of ~0.7π (single turn) or ~1.4π (double / 180°, "big arc"). `visualDir`
+// flips the sweep direction so cw vs ccw reverse the point order. The cone
+// arrowhead is placed at the arc's end; its rotation is set per-axis so the
+// cone's +y axis (its default pointing direction) aligns with the arc tangent
+// at the end — i.e. the arrowhead points along the arc's sweep direction.
+export function arrowGeometry(spec: ArrowSpec): {
+  points: number[][]
+  headPos: number[]
+  headRot: number[]
+  showX2: boolean
+} {
+  const sweep = spec.double ? Math.PI * 1.4 : Math.PI * 0.7   // big arc for 180
+  const steps = 24
+  const r = 0.55
+  const dir = spec.visualDir === 'cw' ? 1 : -1
+  const pts2d: [number, number][] = []
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * sweep * dir
+    pts2d.push([Math.cos(a) * r, Math.sin(a) * r])
+  }
+  // map 2D (u,v) on the face plane to 3D, offset outward by sign*0.55
+  const off = spec.sign * 0.55
+  const points: number[][] = pts2d.map(([u, v]) => {
+    if (spec.axis === 'x') return [off, u, v]
+    if (spec.axis === 'y') return [u, off, v]
+    return [u, v, off]
+  })
+  const head2 = pts2d[pts2d.length - 1]
+  const headPos: number[] =
+    spec.axis === 'x' ? [off, head2[0], head2[1]]
+    : spec.axis === 'y' ? [head2[0], off, head2[1]]
+    : [head2[0], head2[1], off]
+
+  // Tangent at the arc end in 2D (u,v): d/da of (cos r·a, sin r·a) at a=end,
+  // = (-sin, cos) * dir. The cone's +y axis must point along this tangent
+  // (in face-plane coords). Compute the in-plane rotation that maps +y to the
+  // tangent, then express as a 3D Euler rotation about the face's outward
+  // normal axis (x/y/z). For x-axis faces the plane is (y,z); for y-axis faces
+  // (x,z); for z-axis faces (x,y). The cone geometry's local +y is its tip
+  // direction, so a roll about the face normal tilts the tip onto the tangent.
+  const endA = sweep * dir
+  const tu = -Math.sin(endA) * dir
+  const tv = Math.cos(endA) * dir
+  // angle of tangent relative to +v axis (since cone points +y → +v in plane)
+  const tangentAng = Math.atan2(tu, tv)
+  const headRot: [number, number, number] =
+    spec.axis === 'x' ? [tangentAng, 0, 0]
+    : spec.axis === 'y' ? [0, tangentAng, 0]
+    : [0, 0, tangentAng]
+
+  return { points, headPos, headRot, showX2: spec.double }
+}
+
+function Arrow({ spec }: { spec: ArrowSpec }) {
+  const g = arrowGeometry(spec)
+  return (
+    <group>
+      <Line points={g.points as any} color="#ffffff" lineWidth={4} />
+      <mesh position={g.headPos as any} rotation={g.headRot as any}>
+        <coneGeometry args={[0.08, 0.2, 12]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh>
+      {g.showX2 && (
+        <Text
+          position={g.headPos.map((c) => c * 1.6) as any}
+          fontSize={0.3}
+          color="#ffffff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          ×2
+        </Text>
+      )}
+    </group>
+  )
+}
 
 interface FacePlane {
   color: string
@@ -152,6 +238,18 @@ export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
             return <Cubie key={'L' + i} pos={p} faceColors={c.faceColors} />
           })}
         </group>
+        {/* direction arrow on the turning face, fixed in the face plane (no
+            Billboard — rotates with the cube as a plain scene child) */}
+        {animating && pendingMove && <Arrow spec={makeArrow(pendingMove.face, pendingMove.dir)} />}
+        {/* user can orbit the view; pan disabled, zoom + polar clamped so the
+            cube can't be flipped to a confusing upside-down view */}
+        <OrbitControls
+          enablePan={false}
+          minDistance={4}
+          maxDistance={12}
+          minPolarAngle={Math.PI / 6}
+          maxPolarAngle={Math.PI - Math.PI / 6}
+        />
       </Canvas>
     </div>
   )
