@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Line, OrbitControls, Text } from '@react-three/drei'
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import * as THREE from 'three'
 import {
@@ -108,15 +108,17 @@ function Arrow({ spec }: { spec: ArrowSpec }) {
         <meshStandardMaterial color="#ffffff" />
       </mesh>
       {g.showX2 && (
-        <Text
-          position={g.headPos.map((c) => c * 1.6) as any}
-          fontSize={0.3}
-          color="#ffffff"
-          anchorX="center"
-          anchorY="middle"
-        >
-          ×2
-        </Text>
+        <Suspense fallback={null}>
+          <Text
+            position={g.headPos.map((c) => c * 1.6) as any}
+            fontSize={0.3}
+            color="#ffffff"
+            anchorX="center"
+            anchorY="middle"
+          >
+            ×2
+          </Text>
+        </Suspense>
       )}
     </group>
   )
