@@ -129,7 +129,7 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   position: relative;
   overflow: visible;
   perspective: 1000px;
-  transform: scale(1.5);
+  transform: scale(1.7);
   transform-origin: center center;
 }
 .cube {

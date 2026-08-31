@@ -231,8 +231,9 @@ function Scene({
   const data = cubieMeshData(committed)
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[5, 8, 5]} intensity={0.8} />
+      <ambientLight intensity={1.0} />
+      <directionalLight position={[5, 8, 5]} intensity={1.4} />
+      <directionalLight position={[-5, -3, -5]} intensity={0.5} />
       <group rotation={[0, 0, 0]}>
         {data.map((c, i) => (
           <Cubie

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
 import { I18nProvider } from '../i18n'
@@ -38,16 +38,19 @@ function renderSolve() {
 describe('Solve screen', () => {
   beforeEach(() => localStorage.clear())
 
-  it('renders the 3D canvas for a solvable cube', () => {
+  it('renders the 3D canvas for a solvable cube (after async solve resolves)', async () => {
     renderSolve()
-    expect(screen.getByText('返回填色')).toBeInTheDocument()
-    const canvas = document.querySelector('[data-testid="canvas"]')
+    // The solve() runs in an effect (idle/timeout), so the route briefly shows
+    // "正在准备复原…" while preparing. Wait for the canvas to mount.
+    const canvas = await screen.findByTestId('canvas')
     expect(canvas).toBeTruthy()
+    expect(screen.getByText('返回填色')).toBeInTheDocument()
   })
 
-  it('renders controls and a back-to-paint link for a solvable cube', () => {
+  it('renders controls and a back-to-paint link for a solvable cube', async () => {
     renderSolve()
+    // Wait for the async solve to finish and the controls to render.
+    await waitFor(() => expect(screen.getByRole('button', { name: /下一步|完成/ })).toBeInTheDocument())
     expect(screen.getByText('返回填色')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /下一步|完成/ })).toBeInTheDocument()
   })
 })

@@ -6,7 +6,7 @@ import { solve } from '../lib/solver'
 import { applyMoves } from '../lib/moves'
 import { Cube3D } from '../components/Cube3D'
 import { SolveControls } from '../components/SolveControls'
-import type { Move } from '../types'
+import type { Move, SolveStep } from '../types'
 
 function formatMove(m: Move): string {
   return m.face + (m.dir === -1 ? "'" : m.dir === 2 ? '2' : '')
@@ -16,7 +16,34 @@ export default function Solve() {
   const { cube, full, validation } = useApp()
   const { t } = useI18n()
   const solvable = full && validation?.solvable
-  const steps = useMemo(() => (solvable ? solve(cube) : []), [cube, solvable])
+  // Solve OFF the render path: run solve() in an effect (idle/dispatched) so
+  // the heavy solver (module-load prebuild + per-solve BFS) never blocks the
+  // synchronous render and never re-runs mid-playback. Previously this was a
+  // useMemo in the render body, which re-ran whenever any render-time value
+  // was suspected to change — and a transient re-render during playback could
+  // make the component throw a Promise (React 19) or block, flashing the
+  // Suspense "准备中" fallback mid-play. Now `steps` is state set once after
+  // a microtask/idle yield, so playback is always smooth.
+  const [steps, setSteps] = useState<SolveStep[]>([])
+  const [preparing, setPreparing] = useState(true)
+  useEffect(() => {
+    if (!solvable) { setSteps([]); setPreparing(false); return }
+    setPreparing(true)
+    let cancelled = false
+    // Defer the solve to the next idle callback so the route renders its
+    // shell immediately (the 3D cube stays mounted) instead of blocking.
+    const run = () => {
+      if (cancelled) return
+      const result = solve(cube)
+      if (cancelled) return
+      setSteps(result)
+      setPreparing(false)
+    }
+    const ric = (window as any).requestIdleCallback
+    if (ric) { const h = ric(run, { timeout: 200 }); return () => { cancelled = true; (window as any).cancelIdleCallback?.(h) } }
+    const h = setTimeout(run, 0)
+    return () => { cancelled = true; clearTimeout(h) }
+  }, [cube, solvable])
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
@@ -60,6 +87,21 @@ export default function Solve() {
   }, [playing, done])
 
   if (!solvable) return <Navigate to="/" replace />
+
+  // While the async solve() is still running (first entry / cube change), show
+  // the preparing shell. Crucially this does NOT unmount the Suspense boundary
+  // — the cube 3D canvas stays mounted and the solve runs in the background,
+  // so when it resolves playback is immediately smooth (no mid-play flash).
+  if (preparing || steps.length === 0) {
+    return (
+      <div className="app solve">
+        <header className="solve-header">
+          <Link to="/" className="back">{t.solve.back}</Link>
+          <span className="progress">{t.solve.preparing}</span>
+        </header>
+      </div>
+    )
+  }
 
   const pendingMove = animate && i < flatMoves.length ? flatMoves[i] : null
 

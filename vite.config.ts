@@ -8,6 +8,13 @@ function gitSha(): string {
   try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' }
 }
 
+// A SINGLE build stamp captured once at config-eval time. Both __BUILD_TIME__
+// (inlined into the bundle) and dist/version.json's builtAt MUST use the same
+// value — if they differ, the runtime version poll sees a permanent mismatch
+// and the update banner re-appears ~5s after every reload (the
+// "banner keeps coming back, no real update" bug). This is the source of truth.
+const BUILD_TIME = new Date().toISOString()
+
 // Build-time version stamp written to dist/version.json. Unlike the SW's
 // updatefound/waiting events (which iOS standalone PWA never fires reliably),
 // this file can be fetched with cache:'no-store' at runtime to detect that a
@@ -20,7 +27,7 @@ function buildStamp() {
       const stamp = {
         version: process.env.npm_package_version ?? '0.0.0',
         gitSha: process.env.GIT_SHA ?? gitSha(),
-        builtAt: new Date().toISOString(),
+        builtAt: BUILD_TIME,
       }
       try { writeFileSync('dist/version.json', JSON.stringify(stamp)) } catch { /* ignore */ }
     },
@@ -32,7 +39,7 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
     __GIT_SHA__: JSON.stringify(process.env.GIT_SHA ?? gitSha()),
-    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+    __BUILD_TIME__: JSON.stringify(BUILD_TIME),
   },
   plugins: [
     react(),
