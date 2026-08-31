@@ -1,6 +1,7 @@
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Line, OrbitControls, Text } from '@react-three/drei'
 import { useEffect, useRef, useState } from 'react'
+import type { MutableRefObject } from 'react'
 import * as THREE from 'three'
 import {
   applyLayerTurn,
@@ -158,37 +159,29 @@ function Cubie({ pos, faceColors, hidden }: {
   )
 }
 
-export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
-  cube: CubeState
+// Inner scene rendered INSIDE <Canvas>. All R3F-context-dependent code lives
+// here: `useFrame` and the `<group ref>` it drives, plus the R3F intrinsics
+// (cubies, overlay layer, arrow, OrbitControls). The parent `Cube3D` owns the
+// React state that must live above the Canvas (committed/animating/timing refs)
+// and passes it down; `useFrame` only works because this component is a Canvas
+// descendant (calling it from the Canvas PARENT throws "R3F: Hooks can only be
+// used within the Canvas component!").
+interface SceneProps {
+  committed: CubeState
   pendingMove: Move | null
   stepMs: number
-  moveNonce: number
+  animating: boolean
+  startRef: MutableRefObject<number | null>
+  setCommitted: (c: CubeState) => void
+  setAnimating: (v: boolean) => void
   onAnimDone?: () => void
-}) {
+}
+
+function Scene({
+  committed, pendingMove, stepMs, animating,
+  startRef, setCommitted, setAnimating, onAnimDone,
+}: SceneProps) {
   const layerRef = useRef<THREE.Group>(null)
-  const startRef = useRef<number | null>(null)
-  const [committed, setCommitted] = useState<CubeState>(cube)
-  const [animating, setAnimating] = useState(false)
-
-  // Trigger animation on each new step. moveNonce changes every step (including
-  // repeated same-move steps), so depending on it (rather than pendingMove) lets
-  // the effect retrigger — required for Task 8's prev/step-back over equal moves.
-  useEffect(() => {
-    if (pendingMove && !animating) {
-      startRef.current = null
-      setAnimating(true)
-    }
-    // pendingMove is read here but intentionally not a dep: moveNonce is the
-    // retrigger signal; pendingMove is the move to animate.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moveNonce])
-
-  // Re-sync committed when the parent changes `cube` externally (e.g. Task 8
-  // manual prev/step-back), but never mid-animation — otherwise an external
-  // change would clobber the in-flight layer swap.
-  useEffect(() => {
-    if (!animating) setCommitted(cube)
-  }, [cube])
 
   useFrame((state) => {
     if (!animating || !pendingMove || !layerRef.current) return
@@ -218,38 +211,88 @@ export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
   const layerSet = new Set(layerPositionsArr.map((p) => p.join(',')))
   const data = cubieMeshData(committed)
   return (
+    <>
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[5, 8, 5]} intensity={0.8} />
+      <group rotation={[0, 0, 0]}>
+        {data.map((c, i) => (
+          <Cubie
+            key={i}
+            pos={c.pos}
+            faceColors={c.faceColors}
+            hidden={animating && layerSet.has(c.pos.join(','))}
+          />
+        ))}
+      </group>
+      {/* animated layer overlay: 9 cubie copies rotated about the face axis */}
+      <group ref={layerRef}>
+        {animating && pendingMove && layerPositionsArr.map((p, i) => {
+          const c = data.find((d) => d.pos.join(',') === p.join(','))!
+          return <Cubie key={'L' + i} pos={p} faceColors={c.faceColors} />
+        })}
+      </group>
+      {/* direction arrow on the turning face, fixed in the face plane (no
+          Billboard — rotates with the cube as a plain scene child) */}
+      {animating && pendingMove && <Arrow spec={makeArrow(pendingMove.face, pendingMove.dir)} />}
+      {/* user can orbit the view; pan disabled, zoom + polar clamped so the
+          cube can't be flipped to a confusing upside-down view */}
+      <OrbitControls
+        enablePan={false}
+        minDistance={4}
+        maxDistance={12}
+        minPolarAngle={Math.PI / 6}
+        maxPolarAngle={Math.PI - Math.PI / 6}
+      />
+    </>
+  )
+}
+
+export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
+  cube: CubeState
+  pendingMove: Move | null
+  stepMs: number
+  moveNonce: number
+  onAnimDone?: () => void
+}) {
+  const startRef = useRef<number | null>(null)
+  const [committed, setCommitted] = useState<CubeState>(cube)
+  const [animating, setAnimating] = useState(false)
+
+  // Trigger animation on each new step. moveNonce changes every step (including
+  // repeated same-move steps), so depending on it (rather than pendingMove) lets
+  // the effect retrigger — required for Task 8's prev/step-back over equal moves.
+  useEffect(() => {
+    if (pendingMove && !animating) {
+      startRef.current = null
+      setAnimating(true)
+    }
+    // pendingMove is read here but intentionally not a dep: moveNonce is the
+    // retrigger signal; pendingMove is the move to animate.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moveNonce])
+
+  // Re-sync committed when the parent changes `cube` externally (e.g. Task 8
+  // manual prev/step-back), but never mid-animation — otherwise an external
+  // change would clobber the in-flight layer swap.
+  useEffect(() => {
+    if (!animating) setCommitted(cube)
+    // animating is read here but intentionally not a dep: we re-sync on cube
+    // changes, gating on the current animating flag.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cube])
+
+  return (
     <div className="cube3d-wrap" data-testid="canvas">
       <Canvas camera={{ position: [3.5, 3.5, 3.5], fov: 45 }}>
-        <ambientLight intensity={0.6} />
-        <directionalLight position={[5, 8, 5]} intensity={0.8} />
-        <group rotation={[0, 0, 0]}>
-          {data.map((c, i) => (
-            <Cubie
-              key={i}
-              pos={c.pos}
-              faceColors={c.faceColors}
-              hidden={animating && layerSet.has(c.pos.join(','))}
-            />
-          ))}
-        </group>
-        {/* animated layer overlay: 9 cubie copies rotated about the face axis */}
-        <group ref={layerRef}>
-          {animating && pendingMove && layerPositionsArr.map((p, i) => {
-            const c = data.find((d) => d.pos.join(',') === p.join(','))!
-            return <Cubie key={'L' + i} pos={p} faceColors={c.faceColors} />
-          })}
-        </group>
-        {/* direction arrow on the turning face, fixed in the face plane (no
-            Billboard — rotates with the cube as a plain scene child) */}
-        {animating && pendingMove && <Arrow spec={makeArrow(pendingMove.face, pendingMove.dir)} />}
-        {/* user can orbit the view; pan disabled, zoom + polar clamped so the
-            cube can't be flipped to a confusing upside-down view */}
-        <OrbitControls
-          enablePan={false}
-          minDistance={4}
-          maxDistance={12}
-          minPolarAngle={Math.PI / 6}
-          maxPolarAngle={Math.PI - Math.PI / 6}
+        <Scene
+          committed={committed}
+          pendingMove={pendingMove}
+          stepMs={stepMs}
+          animating={animating}
+          startRef={startRef}
+          setCommitted={setCommitted}
+          setAnimating={setAnimating}
+          onAnimDone={onAnimDone}
         />
       </Canvas>
     </div>
