@@ -126,7 +126,7 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .scene {
   width: 200px;
   height: 214px;
-  margin: 30px auto 110px auto;
+  margin: 140px auto 85px auto;
   position: relative;
   overflow: visible;
   perspective: 1000px;
