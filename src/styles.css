@@ -388,6 +388,35 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   font-weight: 600;
   cursor: pointer;
 }
+
+/* --- Locale switcher (flag buttons) --- */
+.locale-switcher {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.locale-switcher .flag {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  opacity: 0.75;
+}
+.locale-switcher .flag:hover { opacity: 1; background: rgba(0, 0, 0, 0.08); }
+.locale-switcher .flag.active {
+  opacity: 1;
+  background: rgba(47, 127, 214, 0.25);
+  box-shadow: 0 0 0 2px rgba(47, 127, 214, 0.5);
+}
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.tut-header-spacer { flex: 1; }
 .solve-controls .speed {
   display: flex;
   flex-direction: column;

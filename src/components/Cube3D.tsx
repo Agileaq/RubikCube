@@ -291,7 +291,9 @@ export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
 
   return (
     <div className="cube3d-wrap" data-testid="canvas">
-      <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
+      {/* Camera on the -x side so the default view shows U/L/F = white/orange/
+          green, matching the paint screen's default three faces. */}
+      <Canvas camera={{ position: [-5, 5, 5], fov: 45 }}>
         <Scene
           committed={committed}
           pendingMove={pendingMove}

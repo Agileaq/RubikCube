@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../state/useApp'
+import { useI18n } from '../i18n'
 import { Cube } from '../components/Cube'
 import { Palette } from '../components/Palette'
 import { FlipButton } from '../components/FlipButton'
 import { BuildInfo } from '../components/BuildInfo'
+import { LocaleSwitcher } from '../components/LocaleSwitcher'
 import { FACES } from '../lib/cube'
 
 export default function Paint() {
   const { cube, orientation, brush, remaining, paintSticker, setBrush, flip, reset, full, validation } = useApp()
+  const { t } = useI18n()
   const [copied, setCopied] = useState(false)
 
   // Debug export: compact one-line encoding of the whole cube state, e.g.
@@ -30,30 +33,33 @@ export default function Paint() {
     <div className="app paint">
       <header className="paint-header">
         <span className="spacer" />
-        <h1 className="title-fill">填色</h1>
-        <Link to="/tutorial" className="book-btn" aria-label="教程">📖</Link>
+        <h1 className="title-fill">{t.paint.title}</h1>
+        <span className="header-actions">
+          <LocaleSwitcher />
+          <Link to="/tutorial" className="book-btn" aria-label={t.paint.tutorialAria}>📖</Link>
+        </span>
       </header>
 
       <Cube cube={cube} orientation={orientation} onSticker={paintSticker} />
 
       <FlipButton onFlip={flip} />
-      <p className="hint">请根据手上魔方各面颜色对图中魔方进行填色</p>
+      <p className="hint">{t.paint.hint}</p>
 
       <Palette remaining={remaining} brush={brush} onPick={setBrush} />
 
       {full && validation && !validation.solvable && (
         <>
-          <p className="unsolvable">{validation.reason}</p>
+          <p className="unsolvable">{t.paint.unsolvable}</p>
           <button className="reset-btn" onClick={exportState}>
-            {copied ? '已复制 ✓' : '导出填色状态(调试)'}
+            {copied ? t.paint.copied : t.paint.export}
           </button>
         </>
       )}
       {full && validation?.solvable && (
-        <Link to="/solve" className="solve-link">开始复原</Link>
+        <Link to="/solve" className="solve-link">{t.paint.startSolve}</Link>
       )}
 
-      <button className="reset-btn" onClick={reset}>重置</button>
+      <button className="reset-btn" onClick={reset}>{t.paint.reset}</button>
       <BuildInfo />
     </div>
   )

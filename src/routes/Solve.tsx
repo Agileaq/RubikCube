@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useApp } from '../state/useApp'
+import { useI18n } from '../i18n'
 import { solve } from '../lib/solver'
 import { applyMoves } from '../lib/moves'
 import { Cube3D } from '../components/Cube3D'
 import { SolveControls } from '../components/SolveControls'
 import type { Move } from '../types'
-
-// UI strings (centralized for later i18n — sub-project D).
-const TXT = {
-  back: '返回填色',
-  done: '已复原 ✓',
-  nextLabel: '下一步转动',
-  prevLabel: '上一步',
-}
 
 function formatMove(m: Move): string {
   return m.face + (m.dir === -1 ? "'" : m.dir === 2 ? '2' : '')
@@ -21,6 +14,7 @@ function formatMove(m: Move): string {
 
 export default function Solve() {
   const { cube, full, validation } = useApp()
+  const { t } = useI18n()
   const solvable = full && validation?.solvable
   const steps = useMemo(() => (solvable ? solve(cube) : []), [cube, solvable])
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
@@ -53,13 +47,13 @@ export default function Solve() {
   const pendingMove = animate && i < flatMoves.length ? flatMoves[i] : null
 
   // find which step the current move belongs to for the caption
-  let acc = 0, current = steps[0]
-  for (const s of steps) { if (i <= acc + s.moves.length) { current = s; break } acc += s.moves.length }
+  let acc = 0, currentIdx = 0
+  for (let s = 0; s < steps.length; s++) { if (i <= acc + steps[s].moves.length) { currentIdx = s; break } acc += steps[s].moves.length }
 
   return (
     <div className="app solve">
       <header className="solve-header">
-        <Link to="/" className="back">{TXT.back}</Link>
+        <Link to="/" className="back">{t.solve.back}</Link>
         <span className="progress">{i}/{flatMoves.length}</span>
       </header>
       <Cube3D
@@ -71,11 +65,11 @@ export default function Solve() {
       />
       <div className="current-move" aria-live="polite">
         {done
-          ? <span className="move-done">{TXT.done}</span>
-          : <><span className="move-label">{TXT.nextLabel}</span><span className="move-notation">{formatMove(flatMoves[i])}</span></>}
-        {!done && i > 0 && <span className="move-prev">{TXT.prevLabel} {formatMove(flatMoves[i - 1])}</span>}
+          ? <span className="move-done">{t.solve.done}</span>
+          : <><span className="move-label">{t.solve.nextMove}</span><span className="move-notation">{formatMove(flatMoves[i])}</span></>}
+        {!done && i > 0 && <span className="move-prev">{t.solve.prevMove} {formatMove(flatMoves[i - 1])}</span>}
       </div>
-      <p className="solve-caption"><b>{current?.stage}</b> — {current?.note}</p>
+      <p className="solve-caption"><b>{t.solve.stages[currentIdx]}</b> — {t.solve.notes[currentIdx]}</p>
       <SolveControls
         index={i} total={flatMoves.length} playing={playing}
         stepMs={stepMs} onStepMs={setStepMs}

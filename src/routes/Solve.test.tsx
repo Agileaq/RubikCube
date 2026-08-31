@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
+import { I18nProvider } from '../i18n'
 import Solve from './Solve'
 
 // Real Cube3D pulls @react-three/fiber (WebGL) — mock the whole module so the
@@ -22,12 +23,14 @@ function renderSolve() {
   localStorage.setItem('rc.paint', JSON.stringify(applyMoves(solvedCube(), parseMoves('R'))))
   return render(
     <MemoryRouter initialEntries={['/solve']}>
-      <AppProvider>
-        <Routes>
-          <Route path="/solve" element={<Solve />} />
-          <Route path="/" element={<div>PAINT</div>} />
-        </Routes>
-      </AppProvider>
+      <I18nProvider>
+        <AppProvider>
+          <Routes>
+            <Route path="/solve" element={<Solve />} />
+            <Route path="/" element={<div>PAINT</div>} />
+          </Routes>
+        </AppProvider>
+      </I18nProvider>
     </MemoryRouter>,
   )
 }

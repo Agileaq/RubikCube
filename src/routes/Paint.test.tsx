@@ -2,10 +2,19 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
+import { I18nProvider } from '../i18n'
 import Paint from './Paint'
 
 function renderPaint() {
-  return render(<MemoryRouter><AppProvider><Paint /></AppProvider></MemoryRouter>)
+  return render(
+    <MemoryRouter>
+      <I18nProvider>
+        <AppProvider>
+          <Paint />
+        </AppProvider>
+      </I18nProvider>
+    </MemoryRouter>,
+  )
 }
 
 describe('Paint screen', () => {
