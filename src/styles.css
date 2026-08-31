@@ -24,7 +24,12 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 4px;
+  /* Extra bottom padding (~24px, the "填色" title's font-size) pushes the
+   * cube (and everything below it) down by one title-height line so the
+   * header isn't crowded against the cube. Padding (not margin) is used so
+   * it's part of the header's box and reliably reserves the space in the
+   * flex column regardless of the cube's transform/margin interactions. */
+  padding: 8px 4px 24px;
 }
 .paint-header .spacer { width: 40px; }
 .title-fill {

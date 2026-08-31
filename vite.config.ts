@@ -2,9 +2,29 @@ import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { execSync } from 'node:child_process'
+import { writeFileSync } from 'node:fs'
 
 function gitSha(): string {
   try { return execSync('git rev-parse --short HEAD').toString().trim() } catch { return 'dev' }
+}
+
+// Build-time version stamp written to dist/version.json. Unlike the SW's
+// updatefound/waiting events (which iOS standalone PWA never fires reliably),
+// this file can be fetched with cache:'no-store' at runtime to detect that a
+// new build shipped. The file lives in dist/ (not public/) so it is NOT in the
+// SW precache list — a no-store fetch always reaches the network.
+function buildStamp() {
+  return {
+    name: 'write-version-json',
+    closeBundle() {
+      const stamp = {
+        version: process.env.npm_package_version ?? '0.0.0',
+        gitSha: process.env.GIT_SHA ?? gitSha(),
+        builtAt: new Date().toISOString(),
+      }
+      try { writeFileSync('dist/version.json', JSON.stringify(stamp)) } catch { /* ignore */ }
+    },
+  }
 }
 
 export default defineConfig({
@@ -33,6 +53,7 @@ export default defineConfig({
         ],
       },
     }),
+    buildStamp(),
   ],
   test: {
     globals: true,
