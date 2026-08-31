@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!--
+      black-translucent: in standalone (Add-to-Home-Screen) mode the iOS status
+      bar (time/WiFi/battery) is drawn TRANSPARENT over the web content, which
+      extends under it (viewport-fit=cover is already set above). This lets the
+      app's own blue gradient show through the notch area instead of the default
+      white status-bar background. Status-bar text becomes white.
+    -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="icon" type="image/svg+xml" href="/RubikCube/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/RubikCube/icons/icon-180.png" />
     <title>三阶魔方</title>

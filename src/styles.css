@@ -223,6 +223,19 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   align-items: stretch;
   padding: 0;
   background: #fff;
+  /* With black-translucent status bar the white status-bar text would be
+   * invisible on a white top. Paint a blue strip exactly
+   * env(safe-area-inset-top) tall (the status-bar/notch height) so the notch
+   * area is blue — consistent with the rest of the app — and the white
+   * status-bar text stays legible. Below that strip the gradient is
+   * transparent, so the #fff base shows and the tutorial body stays white.
+   * On devices with no safe-area inset (env=0) the strip collapses to 0 and
+   * the tutorial is just white, as before. */
+  background-image: linear-gradient(
+    to bottom,
+    #2f7fd6 env(safe-area-inset-top),
+    transparent env(safe-area-inset-top)
+  );
 }
 .tut-header {
   display: flex;
@@ -238,7 +251,12 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .tut-header h1 { margin: 0; font-size: 20px; font-weight: 700; color: #222; }
 .tut-tabs {
   position: sticky;
-  top: 0;
+  /* Park below the iOS status bar / notch, not under it. With
+   * viewport-fit=cover + black-translucent status bar, top:0 is the screen's
+   * top edge (behind the transparent status bar); sticky tabs there would
+   * show through the notch with white-on-white status-bar text. Using the
+   * safe-area inset drops the tabs just below the status bar. */
+  top: env(safe-area-inset-top);
   z-index: 10;
   display: flex;
   gap: 8px;
@@ -265,7 +283,9 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .tut-section {
   padding: 16px 0;
   border-bottom: 1px solid #eee;
-  scroll-margin-top: 56px;
+  /* Match the sticky tabs' offset (safe-area + tabs) so an anchor-scrolled
+   * section heading isn't hidden behind the parked tab bar. */
+  scroll-margin-top: calc(env(safe-area-inset-top) + 56px);
 }
 .tut-section h2 { font-size: 18px; margin: 0 0 8px; }
 .tut-section p { line-height: 1.7; margin: 0 0 12px; color: #444; }
