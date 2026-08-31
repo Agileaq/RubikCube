@@ -203,10 +203,21 @@ function Scene({
     else if (axis === 'y') r.set(0, angle, 0)
     else r.set(0, 0, angle)
     if (isDone(elapsed, stepMs)) {
-      // Snap overlay to 0, commit the post-turn state, notify parent. The swap
-      // is seamless because applyLayerTurn produced the exact end state.
+      // Snap the overlay to its FINAL angle (quarterTurns * 90°), NOT to 0.
+      // React state updates (setCommitted/setAnimating) flush on the NEXT
+      // render, so for the transition frame the overlay is still mounted and
+      // the base layer's 9 cubies are still `hidden` (animating still true,
+      // committed still pre-turn). Snapping the overlay rotation to 0 here
+      // would render the turned face UN-rotated for that one frame — a
+      // visible backward flicker on the face ("闪一下"). Snapping to the final
+      // angle keeps the overlay showing the post-turn orientation for the
+      // transition frame, which matches the about-to-commit base state, so
+      // the handoff is seamless.
+      const finalAngle = quarterTurns * (Math.PI / 2)
       const final = applyLayerTurn(committed, pendingMove.face, pendingMove.dir)
-      r.set(0, 0, 0)
+      if (axis === 'x') r.set(finalAngle, 0, 0)
+      else if (axis === 'y') r.set(0, finalAngle, 0)
+      else r.set(0, 0, finalAngle)
       setCommitted(final)
       setAnimating(false)
       onAnimDone?.()
