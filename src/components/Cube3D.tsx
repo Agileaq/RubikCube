@@ -134,13 +134,18 @@ function Cubie({ pos, faceColors, hidden }: {
   hidden?: boolean
 }) {
   const [x, y, z] = pos
+  // Sticker planes sit at ±0.51, NOT ±0.5: the black box core's surface is
+  // exactly at ±0.5 (half of a 1×1×1 box), so a coplanar sticker z-fights with
+  // the core and the black shows through in irregular patches. Nudging the
+  // sticker just outside the core surface removes the depth conflict on all
+  // six faces (front and back, since stickers are DoubleSide).
   const faces: FacePlane[] = [
-    { color: faceColors[0] ? HEX[faceColors[0]] : BLACK, pos: [0.5, 0, 0], rot: [0, Math.PI / 2, 0] },   // +x R
-    { color: faceColors[1] ? HEX[faceColors[1]] : BLACK, pos: [-0.5, 0, 0], rot: [0, Math.PI / 2, 0] },  // -x L
-    { color: faceColors[2] ? HEX[faceColors[2]] : BLACK, pos: [0, 0.5, 0], rot: [-Math.PI / 2, 0, 0] }, // +y U
-    { color: faceColors[3] ? HEX[faceColors[3]] : BLACK, pos: [0, -0.5, 0], rot: [Math.PI / 2, 0, 0] }, // -y D
-    { color: faceColors[4] ? HEX[faceColors[4]] : BLACK, pos: [0, 0, 0.5], rot: [0, 0, 0] },           // +z F
-    { color: faceColors[5] ? HEX[faceColors[5]] : BLACK, pos: [0, 0, -0.5], rot: [0, 0, 0] },          // -z B
+    { color: faceColors[0] ? HEX[faceColors[0]] : BLACK, pos: [0.51, 0, 0], rot: [0, Math.PI / 2, 0] },   // +x R
+    { color: faceColors[1] ? HEX[faceColors[1]] : BLACK, pos: [-0.51, 0, 0], rot: [0, Math.PI / 2, 0] },  // -x L
+    { color: faceColors[2] ? HEX[faceColors[2]] : BLACK, pos: [0, 0.51, 0], rot: [-Math.PI / 2, 0, 0] }, // +y U
+    { color: faceColors[3] ? HEX[faceColors[3]] : BLACK, pos: [0, -0.51, 0], rot: [Math.PI / 2, 0, 0] }, // -y D
+    { color: faceColors[4] ? HEX[faceColors[4]] : BLACK, pos: [0, 0, 0.51], rot: [0, 0, 0] },           // +z F
+    { color: faceColors[5] ? HEX[faceColors[5]] : BLACK, pos: [0, 0, -0.51], rot: [0, 0, 0] },          // -z B
   ]
   return (
     <group position={[x * GAP, y * GAP, z * GAP]} visible={!hidden} data-cubie>
