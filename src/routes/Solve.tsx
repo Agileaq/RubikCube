@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useApp } from '../state/useApp'
 import { useI18n } from '../i18n'
-import { solve } from '../lib/solver'
+import { solve, STAGES } from '../lib/solver'
 import { applyMoves } from '../lib/moves'
 import { Cube3D } from '../components/Cube3D'
 import { SolveControls } from '../components/SolveControls'
@@ -105,9 +105,16 @@ export default function Solve() {
 
   const pendingMove = animate && i < flatMoves.length ? flatMoves[i] : null
 
-  // find which step the current move belongs to for the caption
-  let acc = 0, currentIdx = 0
-  for (let s = 0; s < steps.length; s++) { if (i <= acc + steps[s].moves.length) { currentIdx = s; break } acc += steps[s].moves.length }
+  // Find which STEP the current move belongs to, then map that step to its
+  // STAGE index. The solver emits ONE step per sub-goal (e.g. the white cross
+  // is 4 separate steps, all tagged stage=STAGES[0]), so `steps[]` can be up to
+  // ~16 entries while there are only 7 stages. Indexing the i18n stage/note
+  // arrays (7 elements) with the step index would read undefined past step 7 —
+  // the "说明文字在后期消失/错乱" bug. We instead map the step's `stage` tag
+  // back to its 0..6 STAGES index, which always lands inside the arrays.
+  let acc = 0, stepIdx = 0
+  for (let s = 0; s < steps.length; s++) { if (i <= acc + steps[s].moves.length) { stepIdx = s; break } acc += steps[s].moves.length }
+  const stageIdx = steps.length ? STAGES.indexOf(steps[stepIdx].stage) : 0
 
   return (
     <div className="app solve">
@@ -128,7 +135,7 @@ export default function Solve() {
           : <><span className="move-label">{t.solve.nextMove}</span><span className="move-notation">{formatMove(flatMoves[i])}</span></>}
         {!done && i > 0 && <span className="move-prev">{t.solve.prevMove} {formatMove(flatMoves[i - 1])}</span>}
       </div>
-      <p className="solve-caption"><b>{t.solve.stages[currentIdx]}</b> — {t.solve.notes[currentIdx]}</p>
+      <p className="solve-caption"><b>{t.solve.stages[stageIdx]}</b> — {t.solve.notes[stageIdx]}</p>
       <SolveControls
         index={i} total={flatMoves.length} playing={playing} busy={busy}
         stepMs={stepMs} onStepMs={setStepMs}
