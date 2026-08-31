@@ -16,8 +16,8 @@ export function SolveControls({ index, total, onPrev, onNext, onPlay, playing, s
   return (
     <div className="solve-controls">
       <button onClick={onPrev} disabled={index === 0}>{t.solve.prevMove}</button>
-      <button onClick={onPlay}>{playing ? t.solve.pause : t.solve.play}</button>
       <button onClick={onNext} disabled={atEnd}>{atEnd ? t.solve.finish : t.solve.next}</button>
+      <button onClick={onPlay}>{playing ? t.solve.pause : t.solve.play}</button>
       <label className="speed">
         {speedLabel}
         <input type="range" min={1} max={5} step={0.5} value={stepMs / 1000}

@@ -21,7 +21,13 @@ export default function Solve() {
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
   const [stepMs, setStepMs] = useState(2000)
-  const [animate, setAnimate] = useState(true)     // false → pendingMove forced null (snap mode)
+  // animate starts false: entering the solve route must NOT auto-advance a
+  // step. pendingMove = animate && i<len ? flatMoves[i] : null, so with animate
+  // false the first move stays null until the user clicks 播放 or 下一步 (which
+  // set animate true + bump playNonce). Previously this defaulted to true, and
+  // since moveNonce starts at 0 the Cube3D effect saw a non-null pendingMove on
+  // mount and animated one step immediately — the "开始复原后自动走了一步" bug.
+  const [animate, setAnimate] = useState(false)    // false → pendingMove forced null (snap mode)
   const [playNonce, setPlayNonce] = useState(0)    // bump to (re)trigger one animation
 
   const baseCube = useMemo(() => applyMoves(cube, flatMoves.slice(0, i)), [cube, flatMoves, i])
