@@ -152,7 +152,10 @@ function Cubie({ pos, faceColors, hidden }: {
       {faces.map((f, i) => (
         <mesh key={i} position={f.pos} rotation={f.rot}>
           <planeGeometry args={[0.92, 0.92]} />
-          <meshStandardMaterial color={f.color} />
+          {/* DoubleSide so a face turned to the back shows its color, not the
+              black core (planes are single-sided by default → back renders the
+              core behind it, which looks like a black/missing face). */}
+          <meshStandardMaterial color={f.color} side={THREE.DoubleSide} />
         </mesh>
       ))}
     </group>
@@ -283,7 +286,7 @@ export function Cube3D({ cube, pendingMove, stepMs, moveNonce, onAnimDone }: {
 
   return (
     <div className="cube3d-wrap" data-testid="canvas">
-      <Canvas camera={{ position: [3.5, 3.5, 3.5], fov: 45 }}>
+      <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
         <Scene
           committed={committed}
           pendingMove={pendingMove}

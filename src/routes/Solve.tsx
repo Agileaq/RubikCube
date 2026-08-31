@@ -26,7 +26,6 @@ export default function Solve() {
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
-  const [snapKey, setSnapKey] = useState(0)         // bump to remount Cube3D (snap, no anim)
   const [stepMs, setStepMs] = useState(2000)
   const [animate, setAnimate] = useState(true)     // false → pendingMove forced null (snap mode)
   const [playNonce, setPlayNonce] = useState(0)    // bump to (re)trigger one animation
@@ -64,7 +63,6 @@ export default function Solve() {
         <span className="progress">{i}/{flatMoves.length}</span>
       </header>
       <Cube3D
-        key={snapKey}
         cube={baseCube}
         pendingMove={pendingMove}
         stepMs={stepMs}
@@ -81,7 +79,7 @@ export default function Solve() {
       <SolveControls
         index={i} total={flatMoves.length} playing={playing}
         stepMs={stepMs} onStepMs={setStepMs}
-        onPrev={() => { setAnimate(false); setSnapKey(k => k + 1); setI(n => Math.max(0, n - 1)) }}
+        onPrev={() => { setAnimate(false); setI(n => Math.max(0, n - 1)) }}
         onNext={() => { setAnimate(true); setPlaying(false); setPlayNonce(p => p + 1) }}
         onPlay={() => {
           if (playing) {
