@@ -20,7 +20,7 @@ export default function Solve() {
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
-  const [stepMs, setStepMs] = useState(2000)
+  const [stepMs, setStepMs] = useState(2500)
   // animate starts false: entering the solve route must NOT auto-advance a
   // step. pendingMove = animate && i<len ? flatMoves[i] : null, so with animate
   // false the first move stays null until the user clicks 播放 or 下一步 (which
@@ -29,6 +29,12 @@ export default function Solve() {
   // mount and animated one step immediately — the "开始复原后自动走了一步" bug.
   const [animate, setAnimate] = useState(false)    // false → pendingMove forced null (snap mode)
   const [playNonce, setPlayNonce] = useState(0)    // bump to (re)trigger one animation
+  // busy = a layer-turn animation is in flight. While busy the prev/next/play
+  // buttons are disabled so rapid taps can't queue overlapping animations
+  // (which would desync the overlay swap and corrupt the demo). Set true when a
+  // tap triggers an animation, cleared in onAnimDone when Cube3D finishes the
+  // turn. Prev is also disabled while busy because it mutates `i` mid-flight.
+  const [busy, setBusy] = useState(false)
 
   const baseCube = useMemo(() => applyMoves(cube, flatMoves.slice(0, i)), [cube, flatMoves, i])
   const done = i >= flatMoves.length
@@ -38,9 +44,14 @@ export default function Solve() {
   // next animation when auto-playing, so a single manual next animates one move
   // and pauses. `playing` is read from the render closure — onAnimDone is
   // rebuilt every render and Cube3D invokes the latest prop, so it is current.
+  // Clear `busy` when the animation lands; if auto-playing and more moves
+  // remain, keep busy true so the controls stay disabled through the next turn.
   const onAnimDone = () => {
-    setI(n => Math.min(flatMoves.length, n + 1))
-    if (playing) setPlayNonce(p => p + 1)
+    const nextI = Math.min(flatMoves.length, i + 1)
+    setI(nextI)
+    const more = playing && nextI < flatMoves.length
+    setBusy(more)
+    if (playing && more) setPlayNonce(p => p + 1)
   }
 
   useEffect(() => {
@@ -77,16 +88,19 @@ export default function Solve() {
       </div>
       <p className="solve-caption"><b>{t.solve.stages[currentIdx]}</b> — {t.solve.notes[currentIdx]}</p>
       <SolveControls
-        index={i} total={flatMoves.length} playing={playing}
+        index={i} total={flatMoves.length} playing={playing} busy={busy}
         stepMs={stepMs} onStepMs={setStepMs}
-        onPrev={() => { setAnimate(false); setI(n => Math.max(0, n - 1)) }}
-        onNext={() => { setAnimate(true); setPlaying(false); setPlayNonce(p => p + 1) }}
+        onPrev={() => { if (busy) return; setAnimate(false); setI(n => Math.max(0, n - 1)) }}
+        onNext={() => { if (busy) return; setAnimate(true); setPlaying(false); setBusy(true); setPlayNonce(p => p + 1) }}
         onPlay={() => {
+          if (busy && !playing) return  // don't start a new turn mid-animation
           if (playing) {
             setPlaying(false)
+            setBusy(false)
           } else {
             setPlaying(true)
             setAnimate(true)
+            setBusy(true)
             setPlayNonce(p => p + 1)
           }
         }}
