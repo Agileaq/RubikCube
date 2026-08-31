@@ -21,7 +21,7 @@ export default defineConfig({
       includeAssets: ['icons/icon.svg', 'icons/icon-180.png', 'icons/icon-512.png'],
       manifest: {
         name: 'Rubik Cube',
-        short_name: 'RubikCube',
+        short_name: 'Cube',
         start_url: '/RubikCube/',
         scope: '/RubikCube/',
         display: 'standalone',
