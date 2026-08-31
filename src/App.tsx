@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { HashRouter, Routes, Route } from 'react-router-dom'
 import Paint from './routes/Paint'
 import Tutorial from './routes/Tutorial'
+import { UpdateBanner } from './components/UpdateBanner'
 
 // Lazy-load the solve route so the heavy solver module (built eagerly at import
 // time) lands in its own chunk and never weighs down the paint screen's load.
@@ -22,6 +23,7 @@ export default function App() {
         />
         <Route path="/tutorial" element={<Tutorial />} />
       </Routes>
+      <UpdateBanner />
     </HashRouter>
   )
 }

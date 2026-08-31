@@ -227,17 +227,18 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   -webkit-overflow-scrolling: touch;
   white-space: nowrap;
 }
-.tut-tabs a {
+.tut-tabs button {
   flex: 0 0 auto;
-  text-decoration: none;
+  border: none;
+  cursor: pointer;
   color: #333;
   font-size: 14px;
   padding: 6px 12px;
   border-radius: 999px;
   background: #f0f0f0;
 }
-.tut-tabs a:hover { background: #e0e0e0; }
-.tut-tabs a:active { background: #2f7fd6; color: #fff; }
+.tut-tabs button:hover { background: #e0e0e0; }
+.tut-tabs button:active { background: #2f7fd6; color: #fff; }
 .tut-body { padding: 8px 16px 48px; }
 .tut-section {
   padding: 16px 0;
@@ -358,6 +359,34 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .solve-controls button:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+/* --- PWA update banner --- */
+.update-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(31, 36, 48, 0.95);
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+}
+.update-banner button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 999px;
+  background: #34a853;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
 }
 .solve-controls .speed {
   display: flex;
