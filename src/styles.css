@@ -115,17 +115,18 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
  * default shows U/L/R = white/orange/green (req 4); flipped D/B/F = yellow/blue/
  * red (req 5). Transforms verified by rendering + full-grid hit-test (27/27).
  */
-/* .scene holds the 200×214 cube. We scale the cube up 1.5× visually via
- * transform on .scene (transform-origin: center keeps the iso cube centered
- * on the same point). Because CSS transform doesn't change the box's layout
- * size, the 1.5× cube (~300×321) overflows the 200×214 box; overflow:visible
- * lets it render, and the extra bottom margin reserves the vertical space so
- * the palette below doesn't overlap. Horizontally 300px fits within the
- * 420px .app max-width, so no horizontal clip. */
+/* .scene holds the 200×214 cube. We scale the cube up visually via transform
+ * on .scene (transform-origin: center keeps the iso cube centered on the same
+ * point). Because CSS transform doesn't change the box's layout size, the
+ * scaled cube overflows the 200×214 box; overflow:visible lets it render, and
+ * the extra bottom margin reserves the vertical space so the palette below
+ * doesn't overlap. At scale 1.7 the cube is ~364 tall, so the cube extends
+ * ~75px below the 214 box on each side — the bottom margin must exceed that
+ * (plus a little breathing room) or the palette renders under the cube. */
 .scene {
   width: 200px;
   height: 214px;
-  margin: 30px auto 80px auto;
+  margin: 30px auto 110px auto;
   position: relative;
   overflow: visible;
   perspective: 1000px;
