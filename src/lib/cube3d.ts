@@ -215,14 +215,16 @@ export function applyLayerTurn(cube: CubeState, face: Face, dir: 1 | -1 | 2): Cu
 }
 
 // ---------------------------------------------------------------------------
-// ringArrowGeometry — tangential flow arrow on the ring of 12 (Task: arrow refactor)
+// ringArrowGeometry — per-face flow arrows on the turning layer's ring
 // ---------------------------------------------------------------------------
-// Replaces the floating face arc. The direction indicator is a chain of white
-// bars lying ON the side faces of the turning layer's edge cubies (the ring of
-// 12 edges): tail bar → (corner) → [middle bar with a "2" badge for double
-// turns] → (corner) → head bar + chevron wings. Everything derives from the
-// engine's own rotation math (turnDirection / rotatePos / cross product) —
-// never by mirroring one face's logic onto another.
+// Replaces the floating face arc. Each of the turning layer's 4 side faces
+// carries ONE purple arrow spanning that face's full 3-sticker row (the three
+// filled blocks, corner-edge-corner), pointing along the layer's physical flow
+// direction — 4 arrows forming a broken ring band. For double turns the shaft
+// splits around the middle block and a purple "2" sits in the gap, integrated
+// into the arrow. Everything derives from the engine's own rotation math
+// (turnDirection / rotatePos / cross product) — never by mirroring one face's
+// logic onto another.
 
 export const GAP = 1.08 // cubie spacing (world units)
 
@@ -238,18 +240,19 @@ export interface RingBadge {
   rot: [number, number, number]  // orients troika Text flat on the face, upright
 }
 export interface RingArrowGeometry {
-  bars: RingBar[]          // flow order: tail (center→corner), middles (corner→corner), head (corner→center)
-  wings: RingWing[]        // 2 chevron bars forming the arrowhead
-  badge: RingBadge | null  // "2" plate on the middle edge face, double turns only
+  bars: RingBar[]      // shafts: 1 per ring face (full row), 2 for double turns (gap houses the "2")
+  wings: RingWing[]    // 2 chevron bars per ring face at the flow end of the row
+  badges: RingBadge[]  // "2" on each middle block, double turns only
 }
 
-// cubie-local depth layers (constraint: sticker 0.51 < bar 0.52–0.54 < text 0.56)
-const BAR_OFF = 0.53   // bar center above the cubie surface (0.02-thick box → 0.52..0.54)
-const BADGE_OFF = 0.56 // "2" text plane, strictly outside the bar's outer face
-const BAR_W = 0.1      // bar width (in-face, across the flow)
-const BAR_T = 0.02     // bar thickness (along the face normal)
-const EXT = 1.61       // edge-center → just past the cube corner (1.62 = tip; 0.01 overlap seals corners)
-const HEAD_REACH = 0.3 // chevron tip beyond the last edge center
+// cubie-local depth layers (sticker 0.51 < shaft 0.52–0.54 < wings/badge 0.55–0.57)
+const BAR_OFF = 0.53    // shaft center above the cubie surface (0.02-thick box → 0.52..0.54)
+const WING_OFF = 0.56   // chevron rides one layer above the shaft — no coplanar z-fight at the tip
+const BADGE_OFF = 0.56  // "2" text plane, in the shaft gap, strictly above the sticker
+const BADGE_GAP = 0.3   // half-width of the shaft gap housing the "2"
+const BAR_W = 0.1       // bar width (in-face, across the flow)
+const BAR_T = 0.02      // bar thickness (along the face normal)
+const EXT = 1.61        // edge-center → just past the cube corner (1.62 = tip; 0.01 overlap seals corners)
 const WING_LEN = 0.45
 
 // Ring edge the arrow starts on: shared with the face most visible from the
@@ -331,58 +334,57 @@ const BADGE_ROT: Record<string, [number, number, number]> = {
 export function ringArrowGeometry(face: Face, dir: 1 | -1 | 2): RingArrowGeometry {
   const axis = layerAxis(face)
   const step = stepSign(face, dir)
-  const count = dir === 2 ? 3 : 2
 
-  // Path of ring edges in flow order.
-  const path: [number, number, number][] = []
+  // The ring's 4 edge cubies, walked in flow order from the camera-facing
+  // start edge. Each gets its own arrow on its side face.
+  const edges: [number, number, number][] = []
   let p = START_EDGE[face]
-  for (let i = 0; i < count; i++) {
-    path.push(p)
+  for (let i = 0; i < 4; i++) {
+    edges.push(p)
     p = rotatePos(p, axis, step)
   }
 
-  const bars: RingBar[] = path.map((e, i) => {
+  const bars: RingBar[] = []
+  const wings: RingWing[] = []
+  const badges: RingBadge[] = []
+  const A = Math.PI * 3 / 4 // 135°
+  for (const e of edges) {
     const n = sideNormal(e, axis)
     const t = flowTangent(e, axis, step)
-    const a = i > 0 ? -EXT : 0            // incoming corner behind (against flow)
-    const b = i < count - 1 ? EXT : 0     // outgoing corner ahead
-    return { pos: onFace(e, n, t, (a + b) / 2, BAR_OFF), dims: barDims(t, n, b - a) }
-  })
 
-  // Arrowhead: chevron of two wings at ±135° from the flow, tip past the last
-  // edge center, all on the last edge's side face.
-  const last = path[count - 1]
-  const n = sideNormal(last, axis)
-  const t = flowTangent(last, axis, step)
-  const u = cross(n, t)
-  const tip = onFace(last, n, t, HEAD_REACH, BAR_OFF)
-  const A = Math.PI * 3 / 4 // 135°
-  const wings: RingWing[] = ([1, -1] as const).map((s) => {
-    // wing direction: flow rotated ±135° in the face plane (tip points along t)
-    const w: [number, number, number] = [
-      t[0] * Math.cos(A) + u[0] * s * Math.sin(A),
-      t[1] * Math.cos(A) + u[1] * s * Math.sin(A),
-      t[2] * Math.cos(A) + u[2] * s * Math.sin(A),
-    ]
-    const shape = wingShape(n, w, WING_LEN)
-    return {
-      pos: [0, 1, 2].map((i) => tip[i] + w[i] * (WING_LEN / 2)) as [number, number, number],
-      dims: shape.dims,
-      rot: shape.rot,
+    // Shaft across the face's full 3-sticker row (corner to corner). Double
+    // turns split it around the middle block, housing the integrated "2".
+    const segs: [number, number][] = dir === 2
+      ? [[-EXT, -BADGE_GAP], [BADGE_GAP, EXT]]
+      : [[-EXT, EXT]]
+    for (const [a, b] of segs) {
+      bars.push({ pos: onFace(e, n, t, (a + b) / 2, BAR_OFF), dims: barDims(t, n, b - a) })
     }
-  })
 
-  // "2" badge on the middle edge's side face (double turns only), one layer
-  // outside the bar so the two never z-fight.
-  let badge: RingBadge | null = null
-  if (dir === 2) {
-    const mid = path[1]
-    const mn = sideNormal(mid, axis)
-    badge = {
-      pos: onFace(mid, mn, [0, 0, 0], 0, BADGE_OFF),
-      rot: BADGE_ROT[mn.join(',')],
+    // Chevron head at the row's flow end, riding one layer above the shaft so
+    // the crossing at the tip never z-fights.
+    const tip = onFace(e, n, t, EXT, WING_OFF)
+    const u = cross(n, t)
+    for (const s of [1, -1] as const) {
+      // wing direction: flow rotated ±135° in the face plane (tip points along t)
+      const w: [number, number, number] = [
+        t[0] * Math.cos(A) + u[0] * s * Math.sin(A),
+        t[1] * Math.cos(A) + u[1] * s * Math.sin(A),
+        t[2] * Math.cos(A) + u[2] * s * Math.sin(A),
+      ]
+      const shape = wingShape(n, w, WING_LEN)
+      wings.push({
+        pos: [0, 1, 2].map((i) => tip[i] + w[i] * (WING_LEN / 2)) as [number, number, number],
+        dims: shape.dims,
+        rot: shape.rot,
+      })
+    }
+
+    // Purple "2" in the shaft gap, on the middle block's sticker (double turns).
+    if (dir === 2) {
+      badges.push({ pos: onFace(e, n, t, 0, BADGE_OFF), rot: BADGE_ROT[n.join(',')] })
     }
   }
 
-  return { bars, wings, badge }
+  return { bars, wings, badges }
 }

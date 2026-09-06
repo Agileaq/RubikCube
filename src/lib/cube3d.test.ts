@@ -132,8 +132,12 @@ describe('cube3d applyLayerTurn vs engine (scrambled round-trip)', () => {
 })
 
 // ---------------------------------------------------------------------------
-// ringArrowGeometry — tangential flow arrow on the ring side faces
+// ringArrowGeometry — per-face flow arrows on the turning layer's ring
 // ---------------------------------------------------------------------------
+// Design: the 4 side faces of the turning layer each carry ONE purple arrow
+// spanning that face's full 3-sticker row (corner-edge-corner). For double
+// turns the shaft splits around the middle block and a purple "2" sits in the
+// gap, integrated into the arrow.
 
 // The world face an element lies on, derived from its thinnest box dimension
 // (the 0.02 thickness axis is the face normal; pos sign picks the side).
@@ -146,105 +150,140 @@ function faceOf(dims: number[], pos: number[]): Face {
   return FACE_OF[key]
 }
 
-// Flow table locked for ALL 6 faces × 3 directions, derived from the engine's
-// own right-handed rotatePos — NOT by mirroring U's logic. The classic trap is
-// encoded here: D (clockwise seen from below) flows F→R, the mirror image of
-// U's F→L, because the default camera looks DOWN at U but UP through the cube
-// at D.
-const FLOW: [Face, 1 | -1 | 2, Face[]][] = [
-  ['U', 1, ['F', 'L']], ['U', -1, ['F', 'R']], ['U', 2, ['F', 'L', 'B']],
-  ['D', 1, ['F', 'R']], ['D', -1, ['F', 'L']], ['D', 2, ['F', 'R', 'B']],
-  ['F', 1, ['U', 'R']], ['F', -1, ['U', 'L']], ['F', 2, ['U', 'R', 'D']],
-  ['B', 1, ['U', 'L']], ['B', -1, ['U', 'R']], ['B', 2, ['U', 'L', 'D']],
-  ['R', 1, ['U', 'B']], ['R', -1, ['U', 'F']], ['R', 2, ['U', 'B', 'D']],
-  ['L', 1, ['U', 'F']], ['L', -1, ['U', 'B']], ['L', 2, ['U', 'F', 'D']],
-]
+// All 6 faces × 3 directions. Direction expectations are derived from the
+// ENGINE's own right-handed turnDirection — NOT by mirroring U's logic. The
+// classic trap is encoded in the literal spot-checks below: D (clockwise seen
+// from below) flows F→R, the mirror image of U's F→L, because the default
+// camera looks DOWN at U but UP through the cube at D.
+const FLOW: [Face, 1 | -1 | 2][] = []
+for (const f of ['U', 'D', 'F', 'B', 'R', 'L'] as Face[])
+  for (const d of [1, -1, 2] as const) FLOW.push([f, d])
 
-describe('ringArrowGeometry flow table (right-hand rule locked per face)', () => {
-  FLOW.forEach(([face, dir, expected]) => {
+const AXIS_UNIT: Record<'x' | 'y' | 'z', [number, number, number]> = {
+  x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1],
+}
+const crossT = (a: number[], b: number[]) => [
+  a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0],
+]
+// side-face normal of a ring edge (nonzero coordinate other than the layer axis)
+function sideNormalOf(p: number[], axis: 'x' | 'y' | 'z'): string {
+  const [x, y, z] = p
+  if (axis === 'x') return y !== 0 ? `0,${y},0` : `0,0,${z}`
+  if (axis === 'y') return x !== 0 ? `${x},0,0` : `0,0,${z}`
+  return x !== 0 ? `${x},0,0` : `0,${y},0`
+}
+const dot = (a: number[], b: number[]) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+describe('ringArrowGeometry — one arrow per ring face, flow locked per face', () => {
+  FLOW.forEach(([face, dir]) => {
     const label = `${face}${dir === -1 ? "'" : dir === 2 ? '2' : ''}`
-    it(`${label} flows ${expected.join('→')} across the ring side faces`, () => {
+    it(`${label}: 4 shafts cover the ring faces, each head at the engine's flow end`, () => {
       const g = ringArrowGeometry(face, dir)
-      expect(g.bars.map((b: RingBar) => faceOf(b.dims, b.pos))).toEqual(expected)
+      const { axis, quarterTurns } = turnDirection(face, dir)
+      // step direction: engine's dir=1 sign (the face's clockwise). dir=2's
+      // quarterTurns is just magnitude — its wrap follows the face's CW sense.
+      const step = Math.sign(dir === 2 ? turnDirection(face, 1).quarterTurns : quarterTurns) || 1
+      const edges = layerPositions(face).filter((p) => p.filter((c) => c !== 0).length === 2)
+      expect(edges).toHaveLength(4)
+
+      for (const p of edges) {
+        const t = crossT(AXIS_UNIT[axis], p).map((c) => c * step)
+        const f = FACE_OF[sideNormalOf(p, axis)]
+        const shafts = g.bars.filter((b: RingBar) => faceOf(b.dims, b.pos) === f)
+        const heads = g.wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === f)
+        expect(shafts).toHaveLength(dir === 2 ? 2 : 1)
+        expect(heads).toHaveLength(2)
+
+        const center = p.map((c) => c * 1.08)
+        // chevron sits past the edge center along the flow, at the row's end
+        for (const w of heads) expect(dot(w.pos.map((c, i) => c - center[i]), t)).toBeGreaterThan(1.0)
+        // shaft spans corner-to-corner: |center| + half-len reaches 1.61
+        for (const s of shafts) {
+          const long = Math.max(...s.dims)
+          const along = Math.abs(dot(s.pos.map((c, i) => c - center[i]), t))
+          expect(along + long / 2).toBeCloseTo(1.61)
+        }
+        // wings ride one layer outside the shaft plane — no coplanar z-fighting
+        const ni = sideNormalOf(p, axis).split(',').findIndex((c) => c !== '0')
+        const shaftOff = Math.abs(shafts[0].pos[ni])
+        for (const w of heads) expect(Math.abs(w.pos[ni])).toBeCloseTo(shaftOff + 0.03)
+      }
     })
+  })
+
+  it('literal trap: U1 F-row head points −x (toward L); D1 F-row head points +x (toward R)', () => {
+    const u1 = ringArrowGeometry('U', 1)
+    for (const w of u1.wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'F'))
+      expect(w.pos[0]).toBeLessThan(-1.2)
+    const d1 = ringArrowGeometry('D', 1)
+    for (const w of d1.wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'F'))
+      expect(w.pos[0]).toBeGreaterThan(1.2)
+  })
+
+  it('literal trap: B1 U-row head points −x; F1 U-row head points +x', () => {
+    for (const w of ringArrowGeometry('B', 1).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'U'))
+      expect(w.pos[0]).toBeLessThan(-1.2)
+    for (const w of ringArrowGeometry('F', 1).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'U'))
+      expect(w.pos[0]).toBeGreaterThan(1.2)
   })
 })
 
 describe('ringArrowGeometry structure', () => {
-  it('single turn: 2 bars; double turn: 3 bars', () => {
-    expect(ringArrowGeometry('U', 1).bars).toHaveLength(2)
-    expect(ringArrowGeometry('U', -1).bars).toHaveLength(2)
-    expect(ringArrowGeometry('U', 2).bars).toHaveLength(3)
-  })
-
-  it('U1: tail bar runs edge-center→past-corner on F top row, head bar wraps onto L top row', () => {
-    const g = ringArrowGeometry('U', 1)
-    const [b0, b1] = g.bars
-    // b0 on F top row: plane z=1.61 (sticker 1.59 + 0.02 clearance), spans x 0→-1.61
-    expect(b0.pos[0]).toBeCloseTo(-0.805)
-    expect(b0.pos[1]).toBeCloseTo(1.08)
-    expect(b0.pos[2]).toBeCloseTo(1.61)
-    expect(b0.dims).toEqual([1.61, 0.1, 0.02])
-    // b1 on L top row: plane x=-1.61, spans z +1.61→0 (flow −z toward B)
-    expect(b1.pos[0]).toBeCloseTo(-1.61)
-    expect(b1.pos[1]).toBeCloseTo(1.08)
-    expect(b1.pos[2]).toBeCloseTo(0.805)
-    expect(b1.dims).toEqual([0.02, 0.1, 1.61])
-  })
-
-  it('corner continuity: consecutive bars physically overlap 0.01 past the cube edge — no black gap', () => {
-    for (const [face, dir] of FLOW.map(([f, d]) => [f, d] as [Face, 1 | -1 | 2])) {
-      const g = ringArrowGeometry(face, dir)
-      // every bar reaches its corners at 1.61 from the edge center: tail bars
-      // span 1.61 (center→corner), middle bars 3.22 (corner→corner), so the
-      // perpendicular bars at each corner interpenetrate instead of butting.
-      for (const b of g.bars) {
-        const long = Math.max(...b.dims)
-        expect([1.61, 3.22].some((e) => Math.abs(e - long) < 1e-9)).toBe(true)
-      }
+  it('single turn: 4 shafts + 8 wings, no badge; double turn: 8 shafts + 8 wings + 4 badges', () => {
+    for (const d of [1, -1] as const) {
+      const g = ringArrowGeometry('U', d)
+      expect(g.bars).toHaveLength(4)
+      expect(g.wings).toHaveLength(8)
+      expect(g.badges).toHaveLength(0)
     }
+    const g2 = ringArrowGeometry('U', 2)
+    expect(g2.bars).toHaveLength(8)
+    expect(g2.wings).toHaveLength(8)
+    expect(g2.badges).toHaveLength(4)
   })
 
-  it('U2 middle bar spans the full row corner-to-corner (3.22) centered on the middle edge', () => {
-    const g = ringArrowGeometry('U', 2)
-    expect(g.bars[1].dims).toEqual([0.02, 0.1, 3.22])
-    expect(g.bars[1].pos[0]).toBeCloseTo(-1.61)
-    expect(g.bars[1].pos[1]).toBeCloseTo(1.08)
-    expect(g.bars[1].pos[2]).toBeCloseTo(0)
-  })
-
-  it('wings: exactly 2, on the last bar face, beyond its edge center along the flow, ±45° in-plane', () => {
+  it('U1: F-row shaft spans the full 3-block row (3.22) at z=1.61; L-row shaft likewise', () => {
     const g = ringArrowGeometry('U', 1)
-    expect(g.wings).toHaveLength(2)
-    for (const w of g.wings) {
-      expect(faceOf(w.dims, w.pos)).toBe('L')
-      expect(w.pos[0]).toBeCloseTo(-1.61)          // on the L face plane
-      expect(w.pos[2]).toBeLessThan(0)             // past UL center along flow (−z)
+    const f = g.bars.find((b: RingBar) => faceOf(b.dims, b.pos) === 'F')!
+    expect(f.pos).toEqual([expect.closeTo(0), expect.closeTo(1.08), expect.closeTo(1.61)])
+    expect(f.dims).toEqual([3.22, 0.1, 0.02])
+    const l = g.bars.find((b: RingBar) => faceOf(b.dims, b.pos) === 'L')!
+    expect(l.dims).toEqual([0.02, 0.1, 3.22])
+  })
+
+  it('U2: shaft splits around the middle block — two 1.31 segments flanking a 0.6 gap', () => {
+    const g = ringArrowGeometry('U', 2)
+    const fSegs = g.bars.filter((b: RingBar) => faceOf(b.dims, b.pos) === 'F')
+    expect(fSegs.map((s) => s.dims[0]).sort((a, b) => a - b)).toEqual([1.31, 1.31])
+    const xs = fSegs.map((s) => s.pos[0]).sort((a, b) => a - b)
+    expect(xs[0]).toBeCloseTo(-0.955)
+    expect(xs[1]).toBeCloseTo(0.955)
+  })
+
+  it('U2 badges: one per ring face at the middle block, 1.64 off the core (> shaft outer 1.62)', () => {
+    const g = ringArrowGeometry('U', 2)
+    const faces = g.badges.map((b: RingBadge) => {
+      const ni = badgeMagAxis(b)
+      expect(Math.abs(b.pos[ni])).toBeCloseTo(1.64)
+      expect(Math.abs(b.pos[ni])).toBeGreaterThan(1.62)
+      return FACE_OF[[0, 1, 2].map((i) => (i === ni ? (b.pos[ni] >= 0 ? '1' : '-1') : '0')).join(',')]
+    })
+    expect([...faces].sort()).toEqual(['B', 'F', 'L', 'R'])
+    const fb = g.badges.find((b: RingBadge) => badgeMagAxis(b) === 2)!
+    expect(fb.pos).toEqual([expect.closeTo(0), expect.closeTo(1.08), expect.closeTo(1.64)])
+  })
+
+  it('U1 wings: single-axis ±45° in-plane rotation, symmetric about the row', () => {
+    const g = ringArrowGeometry('U', 1)
+    const lw = g.wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'L')
+    expect(lw).toHaveLength(2)
+    for (const w of lw) {
       const nz = w.rot.filter((c) => Math.abs(c) > 1e-6)
-      expect(nz).toHaveLength(1)                   // single-axis in-plane rotation
+      expect(nz).toHaveLength(1)
       expect(Math.abs(nz[0])).toBeCloseTo(Math.PI / 4)
     }
-    const ys = g.wings.map((w: RingWing) => w.pos[1]).sort((a, b) => a - b)
-    expect(ys[0] + ys[1]).toBeCloseTo(2 * 1.08)    // symmetric about the row
-  })
-
-  it('badge only for dir=2, on the middle edge side face, pushed to 1.64 (> bar outer face 1.62)', () => {
-    for (const [face, dir, path] of FLOW) {
-      const g = ringArrowGeometry(face, dir)
-      if (dir !== 2) {
-        expect(g.badge).toBeNull()
-        continue
-      }
-      const badge = g.badge as RingBadge
-      const ni = badgeMagAxis(badge)
-      // badge face === middle path face (the edge the "2" is written on)
-      const key = [0, 1, 2].map((i) => (i === ni ? (badge.pos[ni] >= 0 ? '1' : '-1') : '0')).join(',')
-      expect(FACE_OF[key]).toBe(path[1])
-      // normal axis offset = GAP 1.08 + 0.56 = 1.64, strictly outside the bar's
-      // outer face at 1.08+0.53+0.01 = 1.62 (constraint: no z-fighting with the bar)
-      expect(Math.abs(badge.pos[ni])).toBeCloseTo(1.64)
-      expect(Math.abs(badge.pos[ni])).toBeGreaterThan(1.62)
-    }
+    const ys = lw.map((w: RingWing) => w.pos[1]).sort((a, b) => a - b)
+    expect(ys[0] + ys[1]).toBeCloseTo(2 * 1.08)
   })
 })
 

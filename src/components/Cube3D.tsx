@@ -38,13 +38,15 @@ export const animationProgress = (elapsedMs: number, stepMs: number) => {
 export const isDone = (elapsedMs: number, stepMs: number) => elapsedMs >= stepMs
 
 // ---------------------------------------------------------------------------
-// Ring flow arrow (direction indicator refactor)
+// Ring flow arrows (direction indicator)
 // ---------------------------------------------------------------------------
-// Tangential arrow lying ON the side faces of the turning layer's edge cubies,
-// riding the rotating layer group. Pure geometry lives in lib/cube3d.ts
-// (`ringArrowGeometry`) as the jsdom-testable surface; this component only
-// renders bars + chevron wings + optional "2" badge. Visible while the turn
-// animates, gone the moment it ends (mount gated by `animating`).
+// Purple arrows lying ON the side faces of the turning layer's edge cubies —
+// one per side face, spanning its full 3-sticker row — riding the rotating
+// layer group. Pure geometry lives in lib/cube3d.ts (`ringArrowGeometry`) as
+// the jsdom-testable surface; this component only renders shafts + chevron
+// heads + optional "2" badges. Visible while the turn animates, gone the
+// moment it ends (mount gated by `animating`).
+const ARROW_COLOR = '#9333ea' // purple
 function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
   const g = ringArrowGeometry(face, dir)
   return (
@@ -52,7 +54,7 @@ function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
       {g.bars.map((b, i) => (
         <mesh key={'b' + i} position={b.pos as unknown as [number, number, number]}>
           <boxGeometry args={b.dims} />
-          <meshStandardMaterial color="#ffffff" />
+          <meshStandardMaterial color={ARROW_COLOR} />
         </mesh>
       ))}
       {g.wings.map((w, i) => (
@@ -62,25 +64,24 @@ function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
           rotation={w.rot}
         >
           <boxGeometry args={w.dims} />
-          <meshStandardMaterial color="#ffffff" />
+          <meshStandardMaterial color={ARROW_COLOR} />
         </mesh>
       ))}
-      {g.badge && (
-        <Suspense fallback={null}>
-          {/* black "2" pressed onto the white band — visible against it, one
-              layer outside so it never z-fights the bar */}
+      {g.badges.map((b, i) => (
+        <Suspense key={'g' + i} fallback={null}>
+          {/* purple "2" seated in the shaft gap over the middle block's sticker */}
           <Text
-            position={g.badge.pos as unknown as [number, number, number]}
-            rotation={g.badge.rot}
+            position={b.pos as unknown as [number, number, number]}
+            rotation={b.rot}
             fontSize={0.3}
-            color="#111"
+            color={ARROW_COLOR}
             anchorX="center"
             anchorY="middle"
           >
             2
           </Text>
         </Suspense>
-      )}
+      ))}
     </group>
   )
 }
