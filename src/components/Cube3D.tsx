@@ -69,11 +69,14 @@ function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
       ))}
       {g.badges.map((b, i) => (
         <Suspense key={'g' + i} fallback={null}>
-          {/* purple "2" seated in the shaft gap over the middle block's sticker */}
+          {/* purple "2" seated in the shaft gap over the middle block's sticker.
+              Same-color outline acts as faux bold without fetching a bold font. */}
           <Text
             position={b.pos as unknown as [number, number, number]}
             rotation={b.rot}
-            fontSize={0.3}
+            fontSize={0.45}
+            outlineWidth={0.024}
+            outlineColor={ARROW_COLOR}
             color={ARROW_COLOR}
             anchorX="center"
             anchorY="middle"
