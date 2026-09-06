@@ -252,7 +252,9 @@ const BADGE_OFF = 0.56  // "2" text plane, in the shaft gap, strictly above the 
 const BADGE_GAP = 0.3   // half-width of the shaft gap housing the "2"
 const BAR_W = 0.1       // bar width (in-face, across the flow)
 const BAR_T = 0.02      // bar thickness (along the face normal)
-const EXT = 1.61        // edge-center → just past the cube corner (1.62 = tip; 0.01 overlap seals corners)
+const EXT = 1.45        // edge-center reach of shaft ends AND chevron tip — pulled in
+                        // from the 1.62 corner tip so each arrow's head and the next
+                        // arrow's tail keep a visible breathing gap at the corner
 const WING_LEN = 0.45
 
 // Ring edge the arrow starts on: shared with the face most visible from the
@@ -266,9 +268,13 @@ const START_EDGE: Record<Face, [number, number, number]> = {
   L: [-1, 1, 0], // UL — side face U
 }
 
-// Face's own clockwise step sign about +axis (matches the engine's CW_SIGN).
-// dir 1/2 wrap clockwise, dir -1 wraps counter-clockwise.
-const stepSign = (face: Face, dir: 1 | -1 | 2) => (dir === -1 ? -CW_SIGN[face] : CW_SIGN[face])
+// Wrap direction = the layer's ACTUAL animated rotation (sign of the engine's
+// quarterTurns): dir 1 → the face's clockwise, dir -1 → counter-clockwise, and
+// dir 2 → +2 about +axis. Deriving from quarterTurns (not CW_SIGN) is what
+// keeps a 180° arrow flowing the way the layer visibly turns — CW_SIGN alone
+// inverts U2/F2/R2 relative to the animation.
+const stepSign = (face: Face, dir: 1 | -1 | 2) =>
+  turnDirection(face, dir).quarterTurns >= 0 ? 1 : -1
 
 // Side-face normal of a ring edge cubie: the nonzero coordinate other than the
 // layer axis (e.g. UF in the U ring → +z → its F face).

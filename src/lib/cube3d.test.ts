@@ -180,9 +180,10 @@ describe('ringArrowGeometry — one arrow per ring face, flow locked per face', 
     it(`${label}: 4 shafts cover the ring faces, each head at the engine's flow end`, () => {
       const g = ringArrowGeometry(face, dir)
       const { axis, quarterTurns } = turnDirection(face, dir)
-      // step direction: engine's dir=1 sign (the face's clockwise). dir=2's
-      // quarterTurns is just magnitude — its wrap follows the face's CW sense.
-      const step = Math.sign(dir === 2 ? turnDirection(face, 1).quarterTurns : quarterTurns) || 1
+      // step = sign of the engine's quarterTurns — the layer's ACTUAL animated
+      // rotation. For dir=2 that is +2 about +axis, so the arrows must flow the
+      // way the layer visibly turns (this caught the U2/F2/R2 inversion bug).
+      const step = Math.sign(quarterTurns) || 1
       const edges = layerPositions(face).filter((p) => p.filter((c) => c !== 0).length === 2)
       expect(edges).toHaveLength(4)
 
@@ -197,11 +198,12 @@ describe('ringArrowGeometry — one arrow per ring face, flow locked per face', 
         const center = p.map((c) => c * 1.08)
         // chevron sits past the edge center along the flow, at the row's end
         for (const w of heads) expect(dot(w.pos.map((c, i) => c - center[i]), t)).toBeGreaterThan(1.0)
-        // shaft spans corner-to-corner: |center| + half-len reaches 1.61
+        // shaft ends and chevron tip pull in at 1.45 (corner tip 1.62) — each
+        // arrow's head and the next arrow's tail keep a breathing gap
         for (const s of shafts) {
           const long = Math.max(...s.dims)
           const along = Math.abs(dot(s.pos.map((c, i) => c - center[i]), t))
-          expect(along + long / 2).toBeCloseTo(1.61)
+          expect(along + long / 2).toBeCloseTo(1.45)
         }
         // wings ride one layer outside the shaft plane — no coplanar z-fighting
         const ni = sideNormalOf(p, axis).split(',').findIndex((c) => c !== '0')
@@ -226,6 +228,18 @@ describe('ringArrowGeometry — one arrow per ring face, flow locked per face', 
     for (const w of ringArrowGeometry('F', 1).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'U'))
       expect(w.pos[0]).toBeGreaterThan(1.2)
   })
+
+  it('literal regression: dir=2 arrows flow with the animated +2 rotation (U2/F2/R2 were inverted)', () => {
+    // U2: layer turns +2 about +y → at UF the flow runs +x (F-row head toward R)
+    for (const w of ringArrowGeometry('U', 2).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'F'))
+      expect(w.pos[0]).toBeGreaterThan(1.2)
+    // R2: layer turns +2 about +x → at UR the flow runs +z (U-row head toward F)
+    for (const w of ringArrowGeometry('R', 2).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'U'))
+      expect(w.pos[2]).toBeGreaterThan(1.2)
+    // F2: layer turns +2 about +z → at UF the flow runs −x (U-row head toward L)
+    for (const w of ringArrowGeometry('F', 2).wings.filter((w: RingWing) => faceOf(w.dims, w.pos) === 'U'))
+      expect(w.pos[0]).toBeLessThan(-1.2)
+  })
 })
 
 describe('ringArrowGeometry structure', () => {
@@ -242,22 +256,22 @@ describe('ringArrowGeometry structure', () => {
     expect(g2.badges).toHaveLength(4)
   })
 
-  it('U1: F-row shaft spans the full 3-block row (3.22) at z=1.61; L-row shaft likewise', () => {
+  it('U1: F-row shaft spans the 3-block row (2.9, ends pulled in) at z=1.61; L-row shaft likewise', () => {
     const g = ringArrowGeometry('U', 1)
     const f = g.bars.find((b: RingBar) => faceOf(b.dims, b.pos) === 'F')!
     expect(f.pos).toEqual([expect.closeTo(0), expect.closeTo(1.08), expect.closeTo(1.61)])
-    expect(f.dims).toEqual([3.22, 0.1, 0.02])
+    expect(f.dims).toEqual([2.9, 0.1, 0.02])
     const l = g.bars.find((b: RingBar) => faceOf(b.dims, b.pos) === 'L')!
-    expect(l.dims).toEqual([0.02, 0.1, 3.22])
+    expect(l.dims).toEqual([0.02, 0.1, 2.9])
   })
 
-  it('U2: shaft splits around the middle block — two 1.31 segments flanking a 0.6 gap', () => {
+  it('U2: shaft splits around the middle block — two 1.15 segments flanking a 0.6 gap', () => {
     const g = ringArrowGeometry('U', 2)
     const fSegs = g.bars.filter((b: RingBar) => faceOf(b.dims, b.pos) === 'F')
-    expect(fSegs.map((s) => s.dims[0]).sort((a, b) => a - b)).toEqual([1.31, 1.31])
+    expect(fSegs.map((s) => s.dims[0]).sort((a, b) => a - b)).toEqual([1.15, 1.15])
     const xs = fSegs.map((s) => s.pos[0]).sort((a, b) => a - b)
-    expect(xs[0]).toBeCloseTo(-0.955)
-    expect(xs[1]).toBeCloseTo(0.955)
+    expect(xs[0]).toBeCloseTo(-0.875)
+    expect(xs[1]).toBeCloseTo(0.875)
   })
 
   it('U2 badges: one per ring face at the middle block, 1.64 off the core (> shaft outer 1.62)', () => {
