@@ -1,6 +1,6 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Text } from '@react-three/drei'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { OrbitControls } from '@react-three/drei'
+import { useEffect, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import * as THREE from 'three'
 import {
@@ -68,24 +68,42 @@ function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
         </mesh>
       ))}
       {g.badges.map((b, i) => (
-        <Suspense key={'g' + i} fallback={null}>
-          {/* purple "2" seated in the shaft gap over the middle block's sticker.
-              Same-color outline acts as faux bold without fetching a bold font. */}
-          <Text
-            position={b.pos as unknown as [number, number, number]}
-            rotation={b.rot}
-            fontSize={0.45}
-            outlineWidth={0.024}
-            outlineColor={ARROW_COLOR}
-            color={ARROW_COLOR}
-            anchorX="center"
-            anchorY="middle"
-          >
-            2
-          </Text>
-        </Suspense>
+        <BadgeTwo key={'g' + i} pos={b.pos as unknown as [number, number, number]} rot={b.rot} />
       ))}
     </group>
+  )
+}
+
+// "2" badge as a canvas texture with the system bold font. troika <Text> fetches
+// its font from a CDN on first mount, so early double turns rendered no digit at
+// all (it only appeared once the font had landed). Drawing the glyph offline is
+// instant, works in the offline PWA, and is bolder than any outline trick.
+let badgeTexture: THREE.CanvasTexture | null = null
+function getBadgeTexture(): THREE.CanvasTexture | null {
+  if (badgeTexture) return badgeTexture
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = 128
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null // jsdom has no 2d context — skip rather than crash
+  ctx.fillStyle = ARROW_COLOR
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.font = 'bold 104px system-ui, -apple-system, sans-serif'
+  ctx.fillText('2', 64, 68)
+  badgeTexture = new THREE.CanvasTexture(canvas)
+  badgeTexture.colorSpace = THREE.SRGBColorSpace
+  badgeTexture.anisotropy = 4
+  return badgeTexture
+}
+
+function BadgeTwo({ pos, rot }: { pos: [number, number, number]; rot: [number, number, number] }) {
+  const tex = getBadgeTexture()
+  if (!tex) return null
+  return (
+    <mesh position={pos} rotation={rot}>
+      <planeGeometry args={[0.5, 0.5]} />
+      <meshStandardMaterial map={tex} transparent />
+    </mesh>
   )
 }
 

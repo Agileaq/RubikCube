@@ -10,11 +10,9 @@ vi.mock('@react-three/fiber', () => ({
   useFrame: vi.fn(),
 }))
 
-// Mock @react-three/drei: Text renders as a plain div (so we can assert on
-// props), OrbitControls is a no-op. Arrow geometry is fully covered by the
-// pure ringArrowGeometry tests in lib/cube3d.test.ts.
+// Mock @react-three/drei: OrbitControls is a no-op. Arrow geometry is fully
+// covered by the pure ringArrowGeometry tests in lib/cube3d.test.ts.
 vi.mock('@react-three/drei', () => ({
-  Text: (props: any) => <div data-testid="text" data-str={props.children} />,
   OrbitControls: () => null,
 }))
 
