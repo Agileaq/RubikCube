@@ -1,23 +1,22 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Line, OrbitControls, Text } from '@react-three/drei'
+import { OrbitControls, Text } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import * as THREE from 'three'
 import {
   applyLayerTurn,
-  arrowSpec as makeArrow,
   cubiesFromState,
+  GAP,
   layerPositions,
+  ringArrowGeometry,
   turnDirection,
 } from '../lib/cube3d'
-import type { ArrowSpec } from '../lib/cube3d'
 import type { CubeState, Color, Move } from '../types'
 
 const HEX: Record<Color, string> = {
   W: '#f8f8f8', Y: '#ffd500', R: '#c41e3a',
   O: '#ff8c00', G: '#009e60', B: '#0051ba',
 }
-const GAP = 1.08 // cubie spacing
 const BLACK = '#111'
 
 export interface CubieMeshData {
@@ -39,84 +38,46 @@ export const animationProgress = (elapsedMs: number, stepMs: number) => {
 export const isDone = (elapsedMs: number, stepMs: number) => elapsedMs >= stepMs
 
 // ---------------------------------------------------------------------------
-// Arrow overlay on the turning face (Task 7)
+// Ring flow arrow (direction indicator refactor)
 // ---------------------------------------------------------------------------
-// `arrowGeometry` is the jsdom-testable surface (Line/Text/OrbitControls from
-// drei are mocked in tests). It builds an arc on the face plane — offset
-// outward by ~0.55 along the face normal — sampling `steps` points along a
-// sweep of ~0.7π (single turn) or ~1.4π (double / 180°, "big arc"). `visualDir`
-// flips the sweep direction so cw vs ccw reverse the point order. The cone
-// arrowhead is placed at the arc's end; its rotation is set per-axis so the
-// cone's +y axis (its default pointing direction) aligns with the arc tangent
-// at the end — i.e. the arrowhead points along the arc's sweep direction.
-export function arrowGeometry(spec: ArrowSpec): {
-  points: number[][]
-  headPos: number[]
-  headRot: number[]
-  showX2: boolean
-} {
-  const sweep = spec.double ? Math.PI * 1.4 : Math.PI * 0.7   // big arc for 180
-  const steps = 24
-  const r = 0.55
-  const dir = spec.visualDir === 'cw' ? 1 : -1
-  const pts2d: [number, number][] = []
-  for (let i = 0; i <= steps; i++) {
-    const a = (i / steps) * sweep * dir
-    pts2d.push([Math.cos(a) * r, Math.sin(a) * r])
-  }
-  // map 2D (u,v) on the face plane to 3D, offset outward just past the face
-  // surface (GAP 1.08 + half-cubie 0.5 ≈ 1.58; 1.65 sits the arrow in front)
-  const off = spec.sign * 1.65
-  const points: number[][] = pts2d.map(([u, v]) => {
-    if (spec.axis === 'x') return [off, u, v]
-    if (spec.axis === 'y') return [u, off, v]
-    return [u, v, off]
-  })
-  const head2 = pts2d[pts2d.length - 1]
-  const headPos: number[] =
-    spec.axis === 'x' ? [off, head2[0], head2[1]]
-    : spec.axis === 'y' ? [head2[0], off, head2[1]]
-    : [head2[0], head2[1], off]
-
-  // Tangent at the arc end in 2D (u,v): d/da of (cos r·a, sin r·a) at a=end,
-  // = (-sin, cos) * dir. The cone's +y axis must point along this tangent
-  // (in face-plane coords). Compute the in-plane rotation that maps +y to the
-  // tangent, then express as a 3D Euler rotation about the face's outward
-  // normal axis (x/y/z). For x-axis faces the plane is (y,z); for y-axis faces
-  // (x,z); for z-axis faces (x,y). The cone geometry's local +y is its tip
-  // direction, so a roll about the face normal tilts the tip onto the tangent.
-  const endA = sweep * dir
-  const tu = -Math.sin(endA) * dir
-  const tv = Math.cos(endA) * dir
-  // angle of tangent relative to +v axis (since cone points +y → +v in plane)
-  const tangentAng = Math.atan2(tu, tv)
-  const headRot: [number, number, number] =
-    spec.axis === 'x' ? [tangentAng, 0, 0]
-    : spec.axis === 'y' ? [0, tangentAng, 0]
-    : [0, 0, tangentAng]
-
-  return { points, headPos, headRot, showX2: spec.double }
-}
-
-function Arrow({ spec }: { spec: ArrowSpec }) {
-  const g = arrowGeometry(spec)
+// Tangential arrow lying ON the side faces of the turning layer's edge cubies,
+// riding the rotating layer group. Pure geometry lives in lib/cube3d.ts
+// (`ringArrowGeometry`) as the jsdom-testable surface; this component only
+// renders bars + chevron wings + optional "2" badge. Visible while the turn
+// animates, gone the moment it ends (mount gated by `animating`).
+function RingArrow({ face, dir }: { face: Move['face']; dir: Move['dir'] }) {
+  const g = ringArrowGeometry(face, dir)
   return (
     <group>
-      <Line points={g.points as any} color="#ffffff" lineWidth={4} />
-      <mesh position={g.headPos as any} rotation={g.headRot as any}>
-        <coneGeometry args={[0.08, 0.2, 12]} />
-        <meshStandardMaterial color="#ffffff" />
-      </mesh>
-      {g.showX2 && (
+      {g.bars.map((b, i) => (
+        <mesh key={'b' + i} position={b.pos as unknown as [number, number, number]}>
+          <boxGeometry args={b.dims} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+      ))}
+      {g.wings.map((w, i) => (
+        <mesh
+          key={'w' + i}
+          position={w.pos as unknown as [number, number, number]}
+          rotation={w.rot}
+        >
+          <boxGeometry args={w.dims} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+      ))}
+      {g.badge && (
         <Suspense fallback={null}>
+          {/* black "2" pressed onto the white band — visible against it, one
+              layer outside so it never z-fights the bar */}
           <Text
-            position={g.headPos.map((c) => c * 1.6) as any}
+            position={g.badge.pos as unknown as [number, number, number]}
+            rotation={g.badge.rot}
             fontSize={0.3}
-            color="#ffffff"
+            color="#111"
             anchorX="center"
             anchorY="middle"
           >
-            ×2
+            2
           </Text>
         </Suspense>
       )}
@@ -246,16 +207,18 @@ function Scene({
           />
         ))}
       </group>
-      {/* animated layer overlay: 9 cubie copies rotated about the face axis */}
+      {/* animated layer overlay: 9 cubie copies rotated about the face axis.
+          The ring flow arrow is a CHILD of this group so it rides the turning
+          cubies it is painted on, then unmounts when the turn ends. */}
       <group ref={layerRef}>
         {animating && pendingMove && layerPositionsArr.map((p, i) => {
           const c = data.find((d) => d.pos.join(',') === p.join(','))!
           return <Cubie key={'L' + i} pos={p} faceColors={c.faceColors} />
         })}
+        {animating && pendingMove && (
+          <RingArrow face={pendingMove.face} dir={pendingMove.dir} />
+        )}
       </group>
-      {/* direction arrow on the turning face, fixed in the face plane (no
-          Billboard — rotates with the cube as a plain scene child) */}
-      {animating && pendingMove && <Arrow spec={makeArrow(pendingMove.face, pendingMove.dir)} />}
       {/* user can orbit the view; pan disabled, zoom + polar clamped so the
           cube can't be flipped to a confusing upside-down view */}
       <OrbitControls

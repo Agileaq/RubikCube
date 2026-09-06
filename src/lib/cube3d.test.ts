@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import type { CubeState, Face } from '../types'
-import { cubiesFromState, applyLayerTurn, layerAxis, layerPositions, turnDirection, rotatePos, arrowSpec } from './cube3d'
+import { cubiesFromState, applyLayerTurn, layerAxis, layerPositions, turnDirection, rotatePos, ringArrowGeometry } from './cube3d'
+import type { RingBar, RingWing, RingBadge } from './cube3d'
 import { solvedCube } from './cube'
 import { applyMove, applyMoves, parseMoves } from './moves'
 
@@ -130,49 +131,124 @@ describe('cube3d applyLayerTurn vs engine (scrambled round-trip)', () => {
   })
 })
 
-describe('cube3d arrowSpec', () => {
-  it('U1 → axis y, sign +1, sweep 1, ccw, not double', () => {
-    const a = arrowSpec('U', 1)
-    expect(a).toEqual({ face: 'U', axis: 'y', sign: 1, sweep: 1, visualDir: 'ccw', double: false })
-  })
+// ---------------------------------------------------------------------------
+// ringArrowGeometry — tangential flow arrow on the ring side faces
+// ---------------------------------------------------------------------------
 
-  it("U' → cw, not double", () => {
-    const a = arrowSpec('U', -1)
-    expect(a.visualDir).toBe('cw')
-    expect(a.double).toBe(false)
-    expect(a.sweep).toBe(1)
-  })
+// The world face an element lies on, derived from its thinnest box dimension
+// (the 0.02 thickness axis is the face normal; pos sign picks the side).
+const FACE_OF: Record<string, Face> = {
+  '1,0,0': 'R', '-1,0,0': 'L', '0,1,0': 'U', '0,-1,0': 'D', '0,0,1': 'F', '0,0,-1': 'B',
+}
+function faceOf(dims: number[], pos: number[]): Face {
+  const ai = dims.findIndex((d) => Math.abs(d - 0.02) < 1e-6)
+  const key = [0, 1, 2].map((i) => (i === ai ? (pos[ai] >= 0 ? '1' : '-1') : '0')).join(',')
+  return FACE_OF[key]
+}
 
-  it('F2 → sweep 2, double', () => {
-    const a = arrowSpec('F', 2)
-    expect(a.axis).toBe('z')
-    expect(a.sign).toBe(1)
-    expect(a.sweep).toBe(2)
-    expect(a.double).toBe(true)
-  })
+// Flow table locked for ALL 6 faces × 3 directions, derived from the engine's
+// own right-handed rotatePos — NOT by mirroring U's logic. The classic trap is
+// encoded here: D (clockwise seen from below) flows F→R, the mirror image of
+// U's F→L, because the default camera looks DOWN at U but UP through the cube
+// at D.
+const FLOW: [Face, 1 | -1 | 2, Face[]][] = [
+  ['U', 1, ['F', 'L']], ['U', -1, ['F', 'R']], ['U', 2, ['F', 'L', 'B']],
+  ['D', 1, ['F', 'R']], ['D', -1, ['F', 'L']], ['D', 2, ['F', 'R', 'B']],
+  ['F', 1, ['U', 'R']], ['F', -1, ['U', 'L']], ['F', 2, ['U', 'R', 'D']],
+  ['B', 1, ['U', 'L']], ['B', -1, ['U', 'R']], ['B', 2, ['U', 'L', 'D']],
+  ['R', 1, ['U', 'B']], ['R', -1, ['U', 'F']], ['R', 2, ['U', 'B', 'D']],
+  ['L', 1, ['U', 'F']], ['L', -1, ['U', 'B']], ['L', 2, ['U', 'F', 'D']],
+]
 
-  it('R1 → axis x, sign +1', () => {
-    const a = arrowSpec('R', 1)
-    expect(a.axis).toBe('x')
-    expect(a.sign).toBe(1)
-    expect(a.visualDir).toBe('ccw')
-  })
-
-  it('D1 → axis y, sign -1', () => {
-    const a = arrowSpec('D', 1)
-    expect(a.axis).toBe('y')
-    expect(a.sign).toBe(-1)
-  })
-
-  it('L1 → axis x, sign -1', () => {
-    const a = arrowSpec('L', 1)
-    expect(a.axis).toBe('x')
-    expect(a.sign).toBe(-1)
-  })
-
-  it('B1 → axis z, sign -1', () => {
-    const a = arrowSpec('B', 1)
-    expect(a.axis).toBe('z')
-    expect(a.sign).toBe(-1)
+describe('ringArrowGeometry flow table (right-hand rule locked per face)', () => {
+  FLOW.forEach(([face, dir, expected]) => {
+    const label = `${face}${dir === -1 ? "'" : dir === 2 ? '2' : ''}`
+    it(`${label} flows ${expected.join('→')} across the ring side faces`, () => {
+      const g = ringArrowGeometry(face, dir)
+      expect(g.bars.map((b: RingBar) => faceOf(b.dims, b.pos))).toEqual(expected)
+    })
   })
 })
+
+describe('ringArrowGeometry structure', () => {
+  it('single turn: 2 bars; double turn: 3 bars', () => {
+    expect(ringArrowGeometry('U', 1).bars).toHaveLength(2)
+    expect(ringArrowGeometry('U', -1).bars).toHaveLength(2)
+    expect(ringArrowGeometry('U', 2).bars).toHaveLength(3)
+  })
+
+  it('U1: tail bar runs edge-center→past-corner on F top row, head bar wraps onto L top row', () => {
+    const g = ringArrowGeometry('U', 1)
+    const [b0, b1] = g.bars
+    // b0 on F top row: plane z=1.61 (sticker 1.59 + 0.02 clearance), spans x 0→-1.61
+    expect(b0.pos[0]).toBeCloseTo(-0.805)
+    expect(b0.pos[1]).toBeCloseTo(1.08)
+    expect(b0.pos[2]).toBeCloseTo(1.61)
+    expect(b0.dims).toEqual([1.61, 0.1, 0.02])
+    // b1 on L top row: plane x=-1.61, spans z +1.61→0 (flow −z toward B)
+    expect(b1.pos[0]).toBeCloseTo(-1.61)
+    expect(b1.pos[1]).toBeCloseTo(1.08)
+    expect(b1.pos[2]).toBeCloseTo(0.805)
+    expect(b1.dims).toEqual([0.02, 0.1, 1.61])
+  })
+
+  it('corner continuity: consecutive bars physically overlap 0.01 past the cube edge — no black gap', () => {
+    for (const [face, dir] of FLOW.map(([f, d]) => [f, d] as [Face, 1 | -1 | 2])) {
+      const g = ringArrowGeometry(face, dir)
+      // every bar reaches its corners at 1.61 from the edge center: tail bars
+      // span 1.61 (center→corner), middle bars 3.22 (corner→corner), so the
+      // perpendicular bars at each corner interpenetrate instead of butting.
+      for (const b of g.bars) {
+        const long = Math.max(...b.dims)
+        expect([1.61, 3.22].some((e) => Math.abs(e - long) < 1e-9)).toBe(true)
+      }
+    }
+  })
+
+  it('U2 middle bar spans the full row corner-to-corner (3.22) centered on the middle edge', () => {
+    const g = ringArrowGeometry('U', 2)
+    expect(g.bars[1].dims).toEqual([0.02, 0.1, 3.22])
+    expect(g.bars[1].pos[0]).toBeCloseTo(-1.61)
+    expect(g.bars[1].pos[1]).toBeCloseTo(1.08)
+    expect(g.bars[1].pos[2]).toBeCloseTo(0)
+  })
+
+  it('wings: exactly 2, on the last bar face, beyond its edge center along the flow, ±45° in-plane', () => {
+    const g = ringArrowGeometry('U', 1)
+    expect(g.wings).toHaveLength(2)
+    for (const w of g.wings) {
+      expect(faceOf(w.dims, w.pos)).toBe('L')
+      expect(w.pos[0]).toBeCloseTo(-1.61)          // on the L face plane
+      expect(w.pos[2]).toBeLessThan(0)             // past UL center along flow (−z)
+      const nz = w.rot.filter((c) => Math.abs(c) > 1e-6)
+      expect(nz).toHaveLength(1)                   // single-axis in-plane rotation
+      expect(Math.abs(nz[0])).toBeCloseTo(Math.PI / 4)
+    }
+    const ys = g.wings.map((w: RingWing) => w.pos[1]).sort((a, b) => a - b)
+    expect(ys[0] + ys[1]).toBeCloseTo(2 * 1.08)    // symmetric about the row
+  })
+
+  it('badge only for dir=2, on the middle edge side face, pushed to 1.64 (> bar outer face 1.62)', () => {
+    for (const [face, dir, path] of FLOW) {
+      const g = ringArrowGeometry(face, dir)
+      if (dir !== 2) {
+        expect(g.badge).toBeNull()
+        continue
+      }
+      const badge = g.badge as RingBadge
+      const ni = badgeMagAxis(badge)
+      // badge face === middle path face (the edge the "2" is written on)
+      const key = [0, 1, 2].map((i) => (i === ni ? (badge.pos[ni] >= 0 ? '1' : '-1') : '0')).join(',')
+      expect(FACE_OF[key]).toBe(path[1])
+      // normal axis offset = GAP 1.08 + 0.56 = 1.64, strictly outside the bar's
+      // outer face at 1.08+0.53+0.01 = 1.62 (constraint: no z-fighting with the bar)
+      expect(Math.abs(badge.pos[ni])).toBeCloseTo(1.64)
+      expect(Math.abs(badge.pos[ni])).toBeGreaterThan(1.62)
+    }
+  })
+})
+
+function badgeMagAxis(b: RingBadge): number {
+  const m = b.pos.map(Math.abs)
+  return m[0] > m[1] && m[0] > m[2] ? 0 : m[1] > m[2] ? 1 : 2
+}
