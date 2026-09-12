@@ -12,6 +12,28 @@ function formatMove(m: Move): string {
   return m.face + (m.dir === -1 ? "'" : m.dir === 2 ? '2' : '')
 }
 
+// Find which STEP owns move index i, then map that step to its STAGE index.
+// The solver emits ONE step per sub-goal (e.g. the white cross is 4 separate
+// steps, all tagged stage=STAGES[0]), so `steps[]` can be up to ~16 entries
+// while there are only 7 stages. Indexing the i18n stage/note arrays (7
+// elements) with the step index would read undefined past step 7 — the
+// "说明文字在后期消失/错乱" bug. We instead map the step's `stage` tag back to
+// its 0..6 STAGES index, which always lands inside the arrays.
+//
+// Ownership is strict: move i belongs to step s iff acc <= i < acc + len, so at
+// a step boundary the caption already names the stage the upcoming move works
+// toward (a non-strict `<=` here kept the caption on the just-finished step —
+// the "解释和正在做的步对不上" bug). With i = total (done) no step owns a move
+// and the caption stays on the final stage.
+export function stepIndexFor(steps: SolveStep[], i: number): number {
+  let acc = 0
+  for (let s = 0; s < steps.length; s++) {
+    if (i < acc + steps[s].moves.length) return s
+    acc += steps[s].moves.length
+  }
+  return steps.length - 1
+}
+
 export default function Solve() {
   const { cube, full, validation } = useApp()
   const { t } = useI18n()
@@ -105,16 +127,7 @@ export default function Solve() {
 
   const pendingMove = animate && i < flatMoves.length ? flatMoves[i] : null
 
-  // Find which STEP the current move belongs to, then map that step to its
-  // STAGE index. The solver emits ONE step per sub-goal (e.g. the white cross
-  // is 4 separate steps, all tagged stage=STAGES[0]), so `steps[]` can be up to
-  // ~16 entries while there are only 7 stages. Indexing the i18n stage/note
-  // arrays (7 elements) with the step index would read undefined past step 7 —
-  // the "说明文字在后期消失/错乱" bug. We instead map the step's `stage` tag
-  // back to its 0..6 STAGES index, which always lands inside the arrays.
-  let acc = 0, stepIdx = 0
-  for (let s = 0; s < steps.length; s++) { if (i <= acc + steps[s].moves.length) { stepIdx = s; break } acc += steps[s].moves.length }
-  const stageIdx = steps.length ? STAGES.indexOf(steps[stepIdx].stage) : 0
+  const stageIdx = steps.length ? STAGES.indexOf(steps[stepIndexFor(steps, i)].stage) : 0
 
   return (
     <div className="app solve">
