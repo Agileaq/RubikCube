@@ -16,7 +16,8 @@ export const fr: Dict = {
   solve: {
     back: 'Retour à la peinture',
     preparing: 'Préparation de la solution…',
-    nextMove: 'Coup suivant',
+    failed: 'Échec de la résolution. Veuillez réessayer.',
+    retry: 'Réessayer',    nextMove: 'Coup suivant',
     prevMove: 'Précédent',
     done: 'Résolu ✓',
     play: 'Lecture',

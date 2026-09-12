@@ -22,6 +22,8 @@ export interface Dict {
   solve: {
     back: string
     preparing: string
+    failed: string
+    retry: string
     nextMove: string
     prevMove: string
     done: string

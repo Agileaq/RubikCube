@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
 import { I18nProvider } from '../i18n'
@@ -20,6 +20,7 @@ vi.mock('../components/Cube3D', () => ({
 vi.mock('../lib/kociemba', () => ({
   solveFast: vi.fn(async () => [{ face: 'R', dir: 1 }, { face: 'U', dir: 2 }] as any),
 }))
+import { solveFast } from '../lib/kociemba'
 
 import { solvedCube } from '../lib/cube'
 import { applyMoves, parseMoves } from '../lib/moves'
@@ -100,5 +101,27 @@ describe('Solve screen', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /下一步|完成/ })).toBeInTheDocument())
     expect(screen.queryByText(/白色十字/)).not.toBeInTheDocument()
     expect(document.querySelector('.solve-caption')).toBeNull()
+  })
+
+  // A failed solve must show an error with a retry button — never an eternal
+  // "准备中" (the iOS hang). Retrying re-runs the solve with the same cube.
+  it('fast route shows error + retry when the solver fails, and recovers', async () => {
+    localStorage.setItem('rc.paint', JSON.stringify(applyMoves(solvedCube(), parseMoves('R'))))
+    vi.mocked(solveFast).mockRejectedValueOnce(new Error('boom'))
+    render(
+      <MemoryRouter initialEntries={['/solve/fast']}>
+        <I18nProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/solve/fast" element={<SolveFast />} />
+              <Route path="/" element={<div>PAINT</div>} />
+            </Routes>
+          </AppProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByText('求解失败，请稍后重试')).toBeInTheDocument())
+    fireEvent.click(screen.getByRole('button', { name: '重试' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: /下一步|完成/ })).toBeInTheDocument())
   })
 })

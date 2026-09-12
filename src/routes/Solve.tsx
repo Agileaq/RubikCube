@@ -60,9 +60,12 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
   // playback is always smooth.
   const [steps, setSteps] = useState<SolveStep[]>([])
   const [preparing, setPreparing] = useState(true)
+  const [error, setError] = useState(false)
+  const [retryNonce, setRetryNonce] = useState(0)
   useEffect(() => {
-    if (!solvable) { setSteps([]); setPreparing(false); return }
+    if (!solvable) { setSteps([]); setPreparing(false); setError(false); return }
     setPreparing(true)
+    setError(false)
     let cancelled = false
     // Defer the solve to the next idle callback so the route renders its
     // shell immediately (the 3D cube stays mounted) instead of blocking.
@@ -77,13 +80,20 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
         if (cancelled) return
         setSteps(r)
         setPreparing(false)
+      }).catch(() => {
+        // A failed solve must ALWAYS clear the preparing state — an unhandled
+        // rejection here left the page stuck on "准备中" forever (seen on
+        // iOS when the worker/solver init failed).
+        if (cancelled) return
+        setError(true)
+        setPreparing(false)
       })
     }
     const ric = (window as any).requestIdleCallback
     if (ric) { const h = ric(run, { timeout: 200 }); return () => { cancelled = true; (window as any).cancelIdleCallback?.(h) } }
     const h = setTimeout(run, 0)
     return () => { cancelled = true; clearTimeout(h) }
-  }, [cube, solvable, variant])
+  }, [cube, solvable, variant, retryNonce])
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
@@ -132,6 +142,18 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
   // the preparing shell. Crucially this does NOT unmount the Suspense boundary
   // — the cube 3D canvas stays mounted and the solve runs in the background,
   // so when it resolves playback is immediately smooth (no mid-play flash).
+  if (error) {
+    return (
+      <div className="app solve">
+        <header className="solve-header">
+          <Link to="/" className="back">{t.solve.back}</Link>
+        </header>
+        <p className="unsolvable">{t.solve.failed}</p>
+        <button className="reset-btn" onClick={() => setRetryNonce(n => n + 1)}>{t.solve.retry}</button>
+      </div>
+    )
+  }
+
   if (preparing || steps.length === 0) {
     return (
       <div className="app solve">

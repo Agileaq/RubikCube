@@ -16,7 +16,8 @@ export const en: Dict = {
   solve: {
     back: 'Back to paint',
     preparing: 'Preparing solution…',
-    nextMove: 'Next move',
+    failed: 'Solving failed. Please try again.',
+    retry: 'Retry',    nextMove: 'Next move',
     prevMove: 'Previous',
     done: 'Solved ✓',
     play: 'Play',

@@ -19,7 +19,8 @@ export const zh: Dict = {
   solve: {
     back: '返回填色',
     preparing: '正在准备复原…',
-    nextMove: '下一步转动',
+    failed: '求解失败，请稍后重试',
+    retry: '重试',    nextMove: '下一步转动',
     prevMove: '上一步',
     done: '已复原 ✓',
     play: '播放',

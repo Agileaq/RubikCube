@@ -16,7 +16,8 @@ export const ar: Dict = {
   solve: {
     back: 'العودة إلى التلوين',
     preparing: 'يتم تحضير الحل…',
-    nextMove: 'الحركة التالية',
+    failed: 'فشل الحل، حاول مرة أخرى',
+    retry: 'إعادة المحاولة',    nextMove: 'الحركة التالية',
     prevMove: 'السابقة',
     done: 'تم الحل ✓',
     play: 'تشغيل',
