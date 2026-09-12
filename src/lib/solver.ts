@@ -236,6 +236,23 @@ const LL_TOKENS: Move[][] = [
   reflectUD(parseMoves("R U R' U' R' F R2 U' R' U' R U R' F'")), // T-perm
   reflectUD(parseMoves("R' F R' B2 R F' R' B2 R2")),             // A-perm (corner 3-cycle)
   reflectUD(parseMoves("R2 U R U R' U' R' U' R' U R'")),         // U-perm (edge 3-cycle)
+  // Extra LL generators, filtered for F2L-safety at module load (see
+  // LL_TOKENS_SAFE): alternative EO, lefty sune, U-perm mirror, extra A-perm,
+  // H-perm, Z-perm, J/T-flavored PLLs. A mis-remembered candidate is simply
+  // dropped by the filter, so listing generous candidates is free. Together
+  // the surviving tokens cut last-layer paths (~5 moves avg per solve).
+  reflectUD(parseMoves("F U R U' R' F'")),
+  reflectUD(parseMoves("L' U' L U' L' U2 L")),
+  reflectUD(parseMoves("R2 U' R' U' R U R U R U' R")),
+  reflectUD(parseMoves("R2 B2 R F2 R' B2 R F2 R")),
+  reflectUD(parseMoves("R2 U2 R U2 R2 U2 R2 U2 R U2 R2")),
+  reflectUD(parseMoves("R U R' U R' U' R' U R U' R' U' R2 U R")),
+  reflectUD(parseMoves("R U R' F' R U R' U' R' F R2 U' R'")),
+  reflectUD(parseMoves("R U' R' U' R U R D R' U' R D' R' U2 R'")),
+  reflectUD(parseMoves("R U R' U' R' F R2 U' R' U' R U R' F'")),
+  reflectUD(parseMoves("R' U R' U2 R U' R' U2 R2 D U' R2 U R2 D'")),
+  reflectUD(parseMoves("R2 U' R' U2 R U R' U2 R' D R' U R D'")),
+  reflectUD(parseMoves("R U R' U' D R U' R' U D' R U' R' U2 R U R'")),
 ]
 
 function tokenBfs(start: Cube, goal: (c: Cube) => boolean, maxTokens: number): Move[] | null {
@@ -246,7 +263,7 @@ function tokenBfs(start: Cube, goal: (c: Cube) => boolean, maxTokens: number): M
   for (let depth = 0; depth < maxTokens; depth++) {
     const next: Node[] = []
     for (const node of frontier) {
-      for (const tk of LL_TOKENS) {
+      for (const tk of LL_TOKENS_SAFE) {
         const c = applyMvs(node.c, tk)
         const k = fullKey(c)
         if (seen.has(k)) continue
@@ -266,6 +283,13 @@ function tokenBfs(start: Cube, goal: (c: Cube) => boolean, maxTokens: number): M
 // ---------------------------------------------------------------------------
 const edgesHome = (c: Cube, slots: number[]) => slots.every(s => c.ep[s] === s && c.eo[s] === 0)
 const cornersHome = (c: Cube, slots: number[]) => slots.every(s => c.cp[s] === s && c.co[s] === 0)
+
+// A token that fixes the F2L slots pointwise with zero orientation delta on
+// SOLVED does so for EVERY state (its move table maps those slots to
+// themselves orientation-free), i.e. it is a genuine last-layer generator.
+// Filtering at module load keeps tokenBfs's move set exactly the valid ones.
+const F2L_SOLVED = (s: Cube) => edgesHome(s, [0, 1, 2, 3, 8, 9, 10, 11]) && cornersHome(s, [0, 1, 2, 3])
+const LL_TOKENS_SAFE = LL_TOKENS.filter(tk => F2L_SOLVED(applyMvs(SOLVED, tk)))
 
 // ---------------------------------------------------------------------------
 // Solve
@@ -348,7 +372,7 @@ export function solve(input: CubeState): SolveStep[] {
   finish(STAGES[6], '调整顶层棱块位置，完成复原',
     s => fullKey(s) === fullKey(SOLVED))
 
-  return steps
+  return compactSteps(steps)
 }
 
 // The fixed set of care-sets the solver uses, in the order `place` requests
@@ -380,4 +404,38 @@ export function backwardMapStats(): { maps: number; entries: number } {
   let entries = 0
   for (const m of backwardCache.values()) entries += m.size
   return { maps: backwardCache.size, entries }
+}
+
+// ---------------------------------------------------------------------------
+// Move compaction: merge/cancel adjacent same-face turns.
+//
+// Search paths can't contain adjacent same-face turns (canExtend prunes them),
+// but the JOIN of two sub-goal paths or two token algorithms can ("...R" +
+// "R U..." → R2; "...R" + "R'..." → nothing). Merging them shortens playback
+// with zero effect on the net transform. A merged move is tagged to the newer
+// step so the solve page's caption keeps naming the stage the upcoming move
+// works toward; steps left without moves drop out entirely.
+// ---------------------------------------------------------------------------
+const quartersOf = (dir: Move['dir']) => (dir === -1 ? 3 : dir)
+
+export function compactSteps(steps: SolveStep[]): SolveStep[] {
+  const out: { m: Move; s: number }[] = []
+  steps.forEach((st, si) => {
+    for (const m of st.moves) {
+      const top = out[out.length - 1]
+      if (top && top.m.face === m.face) {
+        const q = (quartersOf(top.m.dir) + quartersOf(m.dir)) % 4
+        out.pop()
+        if (q !== 0) out.push({ m: { face: m.face, dir: q === 3 ? -1 : q } as Move, s: si })
+      } else {
+        out.push({ m, s: si })
+      }
+    }
+  })
+  const compact: SolveStep[] = []
+  let last = -1
+  for (const { m, s } of out) {
+    if (s !== last) { compact.push({ ...steps[s], moves: [m] }); last = s } else compact[compact.length - 1].moves.push(m)
+  }
+  return compact
 }

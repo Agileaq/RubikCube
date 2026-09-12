@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { solvedCube } from './cube'
 import { applyMoves, parseMoves } from './moves'
-import { solve, STAGES, backwardMapStats } from './solver'
+import { solve, STAGES, backwardMapStats, compactSteps } from './solver'
 import type { Move } from '../types'
 
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
@@ -21,6 +21,46 @@ describe('LBL solver', () => {
     const { maps, entries } = backwardMapStats()
     expect(maps).toBe(12)
     expect(entries).toBeLessThan(400_000)
+  })
+
+  // Adjacent same-face moves can only arise at sub-goal boundaries (paths
+  // within a sub-goal are canExtend-pruned) or where token algorithms join.
+  // Merging/cancelling them shortens playback without changing the net effect.
+  // A merged move is tagged to the NEWER step so the caption keeps naming the
+  // stage the upcoming move works toward; steps left with no moves disappear.
+  describe('compactSteps', () => {
+    const step = (stage: string, moves: Move[]) => ({ stage, note: '', moves })
+    const flatStages = (steps: { stage: string; moves: Move[] }[]) =>
+      steps.filter(s => s.moves.length).map(s => [s.stage, s.moves.map(m => m.face + (m.dir === -1 ? "'" : m.dir === 2 ? '2' : '')).join(' ')])
+
+    it('cancels an inverse pair across a step boundary', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 1 }]), step('B', [{ face: 'R', dir: -1 }])])))
+        .toEqual([])
+    })
+    it('merges a same-face pair into the newer step', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 1 }]), step('B', [{ face: 'R', dir: 1 }])])))
+        .toEqual([['B', 'R2']])
+    })
+    it('wraps directions mod 4 (R + R2 = R\', R\' R\' = R2, R2 R2 = nothing)', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 1 }]), step('B', [{ face: 'R', dir: 2 }])])))
+        .toEqual([['B', "R'"]])
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: -1 }]), step('B', [{ face: 'R', dir: -1 }])])))
+        .toEqual([['B', 'R2']])
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 2 }]), step('B', [{ face: 'R', dir: 2 }])])))
+        .toEqual([])
+    })
+    it('collapses chains spanning three steps', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 1 }]), step('B', [{ face: 'R', dir: 2 }]), step('C', [{ face: 'R', dir: 1 }])])))
+        .toEqual([])
+    })
+    it('merges inside a step (token joins) and leaves other moves untouched', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'U', dir: 1 }, { face: 'R', dir: 1 }, { face: 'R', dir: -1 }, { face: 'F', dir: 2 }])])))
+        .toEqual([['A', 'U F2']])
+    })
+    it('keeps distinct faces and drops only emptied steps', () => {
+      expect(flatStages(compactSteps([step('A', [{ face: 'R', dir: 1 }]), step('B', [{ face: 'L', dir: 1 }])])))
+        .toEqual([['A', 'R'], ['B', 'L']])
+    })
   })
 
   it('solving the solved cube yields no-op that stays solved', () => {
