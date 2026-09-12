@@ -29,8 +29,8 @@ describe('Paint screen', () => {
 
   it('does not show solve link or unsolvable message on an empty cube', () => {
     renderPaint()
-    expect(screen.queryByText('教学复原')).not.toBeInTheDocument()
-    expect(screen.queryByText('Kociemba复原')).not.toBeInTheDocument()
+    expect(screen.queryByText('教学解')).not.toBeInTheDocument()
+    expect(screen.queryByText('Kociemba解')).not.toBeInTheDocument()
     expect(screen.queryByText(/填色状态不可解/)).not.toBeInTheDocument()
   })
 })
