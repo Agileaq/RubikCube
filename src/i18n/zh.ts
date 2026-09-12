@@ -10,7 +10,7 @@ export const zh: Dict = {
     reset: '重置',
     export: '导出填色状态(调试)',
     copied: '已复制 ✓',
-    teachSolve: '开始复原',
+    teachSolve: '教学解',
     kociembaSolve: 'Kociemba解',
     tutorialAria: '教程',
     unsolvable:
