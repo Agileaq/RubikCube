@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useApp } from '../state/useApp'
 import { useI18n } from '../i18n'
 import { solve, STAGES } from '../lib/solver'
+import { solveFast } from '../lib/kociemba'
 import { applyMoves } from '../lib/moves'
 import { Cube3D } from '../components/Cube3D'
 import { SolveControls } from '../components/SolveControls'
@@ -35,17 +36,28 @@ export function stepIndexFor(steps: SolveStep[], i: number): number {
 }
 
 export default function Solve() {
+  return <SolveRoute variant="teach" />
+}
+
+// Kociemba fast-solve route: same playback machinery, no teaching captions,
+// shortest solution (~20 moves) via the lazily-loaded cubejs two-phase solver.
+export function SolveFast() {
+  return <SolveRoute variant="fast" />
+}
+
+function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
   const { cube, full, validation } = useApp()
   const { t } = useI18n()
   const solvable = full && validation?.solvable
-  // Solve OFF the render path: run solve() in an effect (idle/dispatched) so
-  // the heavy solver (module-load prebuild + per-solve BFS) never blocks the
-  // synchronous render and never re-runs mid-playback. Previously this was a
-  // useMemo in the render body, which re-ran whenever any render-time value
-  // was suspected to change — and a transient re-render during playback could
-  // make the component throw a Promise (React 19) or block, flashing the
-  // Suspense "准备中" fallback mid-play. Now `steps` is state set once after
-  // a microtask/idle yield, so playback is always smooth.
+  // Solve OFF the render path: run the solver in an effect (idle/dispatched) so
+  // the heavy work (LBL module-load prebuild + per-solve BFS, or cubejs table
+  // init + two-phase search) never blocks the synchronous render and never
+  // re-runs mid-playback. Previously this was a useMemo in the render body,
+  // which re-ran whenever any render-time value was suspected to change — and
+  // a transient re-render during playback could make the component throw a
+  // Promise (React 19) or block, flashing the Suspense "准备中" fallback
+  // mid-play. Now `steps` is state set once after a microtask/idle yield, so
+  // playback is always smooth.
   const [steps, setSteps] = useState<SolveStep[]>([])
   const [preparing, setPreparing] = useState(true)
   useEffect(() => {
@@ -56,16 +68,22 @@ export default function Solve() {
     // shell immediately (the 3D cube stays mounted) instead of blocking.
     const run = () => {
       if (cancelled) return
-      const result = solve(cube)
-      if (cancelled) return
-      setSteps(result)
-      setPreparing(false)
+      // teach: LBL layer-by-layer steps with per-stage notes; fast: ONE step
+      // holding the whole Kociemba solution (no narration to split it).
+      const result = variant === 'teach'
+        ? solve(cube)
+        : solveFast(cube).then(moves => [{ stage: '', note: '', moves }] as SolveStep[])
+      Promise.resolve(result).then(r => {
+        if (cancelled) return
+        setSteps(r)
+        setPreparing(false)
+      })
     }
     const ric = (window as any).requestIdleCallback
     if (ric) { const h = ric(run, { timeout: 200 }); return () => { cancelled = true; (window as any).cancelIdleCallback?.(h) } }
     const h = setTimeout(run, 0)
     return () => { cancelled = true; clearTimeout(h) }
-  }, [cube, solvable])
+  }, [cube, solvable, variant])
   const flatMoves = useMemo(() => steps.flatMap(s => s.moves), [steps])
   const [i, setI] = useState(0)                    // number of committed moves
   const [playing, setPlaying] = useState(false)
@@ -127,7 +145,7 @@ export default function Solve() {
 
   const pendingMove = animate && i < flatMoves.length ? flatMoves[i] : null
 
-  const stageIdx = steps.length ? STAGES.indexOf(steps[stepIndexFor(steps, i)].stage) : 0
+  const stageIdx = variant === 'teach' && steps.length ? STAGES.indexOf(steps[stepIndexFor(steps, i)].stage) : 0
 
   return (
     <div className="app solve">
@@ -148,7 +166,9 @@ export default function Solve() {
           : <><span className="move-label">{t.solve.nextMove}</span><span className="move-notation">{formatMove(flatMoves[i])}</span></>}
         {!done && i > 0 && <span className="move-prev">{t.solve.prevMove} {formatMove(flatMoves[i - 1])}</span>}
       </div>
-      <p className="solve-caption"><b>{t.solve.stages[stageIdx]}</b> — {t.solve.notes[stageIdx]}</p>
+      {variant === 'teach' && (
+        <p className="solve-caption"><b>{t.solve.stages[stageIdx]}</b> — {t.solve.notes[stageIdx]}</p>
+      )}
       <SolveControls
         index={i} total={flatMoves.length} playing={playing} busy={busy}
         stepMs={stepMs} onStepMs={setStepMs}

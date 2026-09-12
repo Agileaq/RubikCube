@@ -56,7 +56,10 @@ export default function Paint() {
         </>
       )}
       {full && validation?.solvable && (
-        <Link to="/solve" className="solve-link">{t.paint.startSolve}</Link>
+        <div className="solve-links">
+          <Link to="/solve" className="solve-link">{t.paint.teachSolve}</Link>
+          <Link to="/solve/fast" className="solve-link">{t.paint.kociembaSolve}</Link>
+        </div>
       )}
 
       <button className="reset-btn" onClick={reset}>{t.paint.reset}</button>

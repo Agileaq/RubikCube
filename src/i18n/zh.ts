@@ -10,7 +10,8 @@ export const zh: Dict = {
     reset: '重置',
     export: '导出填色状态(调试)',
     copied: '已复制 ✓',
-    startSolve: '开始复原',
+    teachSolve: '开始复原',
+    kociembaSolve: 'Kociemba复原',
     tutorialAria: '教程',
     unsolvable:
       '填色状态不可解，1.先检查填色状态与手上魔方状态是否一致。2.如果魔方被转角或者拆装错了，将导致无法还原(即不可解)',

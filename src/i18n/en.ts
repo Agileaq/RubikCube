@@ -7,7 +7,8 @@ export const en: Dict = {
     reset: 'Reset',
     export: 'Export state (debug)',
     copied: 'Copied ✓',
-    startSolve: 'Start solving',
+    teachSolve: 'Start solving',
+    kociembaSolve: 'Kociemba solve',
     tutorialAria: 'Tutorial',
     unsolvable:
       'The painted state is not solvable. 1. First check that the painted state matches the cube in your hand. 2. If the cube was twisted or reassembled incorrectly, it cannot be solved (unsolvable).',

@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
 import { I18nProvider } from '../i18n'
-import Solve, { stepIndexFor } from './Solve'
+import Solve, { SolveFast, stepIndexFor } from './Solve'
 
 // Real Cube3D pulls @react-three/fiber (WebGL) — mock the whole module so the
 // Solve test only exercises the route's step/wiring logic. Surface pendingMove
@@ -12,6 +12,13 @@ vi.mock('../components/Cube3D', () => ({
   Cube3D: (props: any) => (
     <div data-testid="canvas" data-pending={JSON.stringify(props.pendingMove)} />
   ),
+}))
+
+// The real kociemba adapter loads cubejs and builds its tables (~1-3s) — far
+// too slow for a route test. The adapter's correctness is covered by
+// lib/kociemba.test.ts; here we only need a solution to render with.
+vi.mock('../lib/kociemba', () => ({
+  solveFast: vi.fn(async () => [{ face: 'R', dir: 1 }, { face: 'U', dir: 2 }] as any),
 }))
 
 import { solvedCube } from '../lib/cube'
@@ -72,5 +79,26 @@ describe('Solve screen', () => {
     expect(stepIndexFor(steps, 4)).toBe(1)
     expect(stepIndexFor(steps, 5)).toBe(2) // boundary → the only move of step 2
     expect(stepIndexFor(steps, 6)).toBe(2) // done → stays on the final stage
+  })
+
+  // The fast variant plays the Kociemba solution with the same controls but
+  // must NOT render the teaching caption (no stage narration on this page).
+  it('fast route renders controls without the teaching caption', async () => {
+    localStorage.setItem('rc.paint', JSON.stringify(applyMoves(solvedCube(), parseMoves('R'))))
+    render(
+      <MemoryRouter initialEntries={['/solve/fast']}>
+        <I18nProvider>
+          <AppProvider>
+            <Routes>
+              <Route path="/solve/fast" element={<SolveFast />} />
+              <Route path="/" element={<div>PAINT</div>} />
+            </Routes>
+          </AppProvider>
+        </I18nProvider>
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getByRole('button', { name: /下一步|完成/ })).toBeInTheDocument())
+    expect(screen.queryByText(/白色十字/)).not.toBeInTheDocument()
+    expect(document.querySelector('.solve-caption')).toBeNull()
   })
 })

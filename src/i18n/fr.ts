@@ -7,7 +7,8 @@ export const fr: Dict = {
     reset: 'Réinitialiser',
     export: 'Exporter l’état (débogage)',
     copied: 'Copié ✓',
-    startSolve: 'Commencer la résolution',
+    teachSolve: 'Commencer la résolution',
+    kociembaSolve: 'Résolution Kociemba',
     tutorialAria: 'Tutoriel',
     unsolvable:
       'L’état peint n’est pas résolvable. 1. Vérifiez d’abord que l’état peint correspond bien au cube entre vos mains. 2. Si le cube a été tordu ou remonté incorrectement, il ne peut pas être résolu (insolvable).',

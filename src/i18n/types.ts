@@ -14,7 +14,8 @@ export interface Dict {
     reset: string
     export: string
     copied: string
-    startSolve: string
+    teachSolve: string
+    kociembaSolve: string
     tutorialAria: string
     unsolvable: string
   }

@@ -7,7 +7,8 @@ export const es: Dict = {
     reset: 'Reiniciar',
     export: 'Exportar estado (depuración)',
     copied: 'Copiado ✓',
-    startSolve: 'Empezar a resolver',
+    teachSolve: 'Empezar a resolver',
+    kociembaSolve: 'Resolver con Kociemba',
     tutorialAria: 'Tutorial',
     unsolvable:
       'El estado pintado no es resoluble. 1. Primero comprueba que el estado pintado coincida con el cubo que tienes en la mano. 2. Si el cubo fue girado forzadamente o montado incorrectamente, no se puede resolver (no resoluble).',
