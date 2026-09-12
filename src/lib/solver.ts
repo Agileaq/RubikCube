@@ -144,7 +144,19 @@ const canExtend = (path: Move[], m: Move): boolean => {
 // that carries SOLVED to that masked configuration (its inverse solves it).
 const backwardCache = new Map<string, Map<string, Move[]>>()
 
+// Care-sets involving corners explode combinatorially (branching ≈13.5 per
+// depth level over a masked state space of billions), so their backward maps
+// are hard-capped one level shallower. Measured on desktop Node: depth 5 built
+// ~2.7M entries ≈ 2GB heap and ~6s — iOS Safari jetsammed the tab mid-build,
+// crashing the solve page in a reload loop ("A problem repeatedly occurred").
+// Depth 4 builds ~330k entries ≈ 180MB in ~1s. Edges-only sets stay at 5:
+// their masked space is tiny (≤190k arrangements) so their maps stay small.
+// The clamp lives INSIDE backwardMap so the eager prebuild and every
+// meetInMiddle query share one code path and can never drift apart.
+const CORNER_BACKWARD_DEPTH = 4
+
 function backwardMap(careEdges: number[], careCorners: number[], depth: number): Map<string, Move[]> {
+  if (careCorners.length && depth > CORNER_BACKWARD_DEPTH) depth = CORNER_BACKWARD_DEPTH
   const cacheKey = careEdges.join('.') + '#' + careCorners.join('.') + '@' + depth
   const cached = backwardCache.get(cacheKey)
   if (cached) return cached
@@ -272,10 +284,10 @@ export function solve(input: CubeState): SolveStep[] {
   //
   // Backward maps are memoized per care-set (≈12 total across all solves) and
   // reused on every subsequent solve. A deeper backward half shrinks the
-  // forward search dramatically but costs more to build; edge-only care-sets
-  // (the white cross) collapse to a small map even at depth 5, whereas
-  // care-sets involving corners explode, so we cap those at depth 4 and let a
-  // slightly deeper forward search cover the difference.
+  // forward search dramatically but costs more to build; corner-involving
+  // care-sets explode combinatorially, so backwardMap clamps those to
+  // CORNER_BACKWARD_DEPTH (4) and a slightly deeper forward search covers the
+  // difference.
   const place = (stage: string, note: string, careEdges: number[], careCorners: number[]) => {
     let mv = meetInMiddle(c, careEdges, careCorners, 4, BACKWARD_DEPTH)
     if (mv === null) mv = meetInMiddle(c, careEdges, careCorners, 9, BACKWARD_DEPTH)
@@ -340,10 +352,11 @@ export function solve(input: CubeState): SolveStep[] {
 }
 
 // The fixed set of care-sets the solver uses, in the order `place` requests
-// them. Their depth-5 backward maps are built once, eagerly at module load, so
-// that no individual solve pays the build cost and per-solve time stays low and
+// them. Their backward maps are built once, eagerly, at module load, so that
+// no individual solve pays the build cost and per-solve time stays low and
 // stable. (The build touches only ~12 fixed care-sets and is shared by every
-// subsequent solve() call.)
+// subsequent solve() call.) backwardMap clamps corner-involving sets to
+// CORNER_BACKWARD_DEPTH, keeping the prebuild inside the mobile memory budget.
 const CARE_SETS: { careEdges: number[]; careCorners: number[] }[] = [
   { careEdges: [0], careCorners: [] },
   { careEdges: [0, 1], careCorners: [] },
@@ -359,3 +372,12 @@ const CARE_SETS: { careEdges: number[]; careCorners: number[] }[] = [
   { careEdges: [0, 1, 2, 3, 8, 9, 10, 11], careCorners: [0, 1, 2, 3] },
 ]
 for (const { careEdges, careCorners } of CARE_SETS) backwardMap(careEdges, careCorners, BACKWARD_DEPTH)
+
+// Test/diagnostics accessor: how many backward maps are prebuilt and how many
+// masked-key entries they hold in total. The mobile memory budget regression
+// test asserts this stays small (see solver.test.ts).
+export function backwardMapStats(): { maps: number; entries: number } {
+  let entries = 0
+  for (const m of backwardCache.values()) entries += m.size
+  return { maps: backwardCache.size, entries }
+}

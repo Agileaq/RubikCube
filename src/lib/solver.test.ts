@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { solvedCube } from './cube'
 import { applyMoves, parseMoves } from './moves'
-import { solve, STAGES } from './solver'
+import { solve, STAGES, backwardMapStats } from './solver'
 import type { Move } from '../types'
 
 const eq = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
@@ -11,6 +11,16 @@ describe('LBL solver', () => {
   it('exposes 7 stage labels', () => {
     expect(STAGES).toHaveLength(7)
     expect(STAGES[0]).toContain('白色十字')
+  })
+
+  // Memory regression guard: the eager prebuild must stay inside the budget a
+  // phone browser can survive. Corner-involving backward maps are clamped to
+  // depth 4 (depth 5 measured ~2GB heap on desktop — iOS Safari jetsammed the
+  // tab before it finished, crashing the solve page in a reload loop).
+  it('prebuilt backward maps stay within the mobile memory budget', () => {
+    const { maps, entries } = backwardMapStats()
+    expect(maps).toBe(12)
+    expect(entries).toBeLessThan(400_000)
   })
 
   it('solving the solved cube yields no-op that stays solved', () => {
