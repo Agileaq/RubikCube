@@ -3,7 +3,13 @@
 // search run here, off the main thread, so the UI stays responsive and a
 // failure here is observable instead of a silent hang. cubejs is bundled
 // INTO this worker file, so no dynamic chunk loading can fail at runtime.
-import { Cube } from 'cubejs'
+import * as cubejsNs from 'cubejs'
+
+// cubejs is CommonJS exporting the Cube class AS the module — under the
+// bundler's CJS interop the class lands on .default (or .Cube), never as a
+// working named import. Same resolution as the main-thread fallback.
+const Cube: typeof cubejsNs.Cube =
+  (cubejsNs as any).Cube ?? (cubejsNs as any).default ?? (cubejsNs as any)
 
 let ready = false
 
