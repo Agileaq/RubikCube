@@ -48,12 +48,12 @@ export default function Paint() {
       <Palette remaining={remaining} brush={brush} onPick={setBrush} />
 
       {full && validation && !validation.solvable && (
-        <>
-          <p className="unsolvable">{t.paint.unsolvable}</p>
-          <button className="reset-btn" onClick={exportState}>
-            {copied ? t.paint.copied : t.paint.export}
-          </button>
-        </>
+        <p className="unsolvable">{t.paint.unsolvable}</p>
+      )}
+      {full && (
+        <button className="reset-btn" onClick={exportState}>
+          {copied ? t.paint.copied : t.paint.export}
+        </button>
       )}
       {full && validation?.solvable && (
         <div className="solve-links">

@@ -61,6 +61,7 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
   const [steps, setSteps] = useState<SolveStep[]>([])
   const [preparing, setPreparing] = useState(true)
   const [error, setError] = useState(false)
+  const [errorText, setErrorText] = useState('')
   const [retryNonce, setRetryNonce] = useState(0)
   useEffect(() => {
     if (!solvable) { setSteps([]); setPreparing(false); setError(false); return }
@@ -80,11 +81,14 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
         if (cancelled) return
         setSteps(r)
         setPreparing(false)
-      }).catch(() => {
+      }).catch(err => {
         // A failed solve must ALWAYS clear the preparing state — an unhandled
         // rejection here left the page stuck on "准备中" forever (seen on
-        // iOS when the worker/solver init failed).
+        // iOS when the worker/solver init failed). Log + surface the reason
+        // so device-specific failures are diagnosable.
+        console.error('solve failed:', err)
         if (cancelled) return
+        setErrorText(err instanceof Error ? err.message : String(err))
         setError(true)
         setPreparing(false)
       })
@@ -149,6 +153,7 @@ function SolveRoute({ variant }: { variant: 'teach' | 'fast' }) {
           <Link to="/" className="back">{t.solve.back}</Link>
         </header>
         <p className="unsolvable">{t.solve.failed}</p>
+        {errorText && <p className="unsolvable">{errorText}</p>}
         <button className="reset-btn" onClick={() => setRetryNonce(n => n + 1)}>{t.solve.retry}</button>
       </div>
     )
