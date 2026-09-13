@@ -13,6 +13,7 @@ export const SEG = {
   S_MIN: 0.25,       // 饱和下限（彩色贴纸）
   V_MIN: 0.2,        // 明度下限（过滤阴影）
   V_BRIGHT: 0.72,    // 亮块下限（白贴纸）
+  DENOISE_MIN: 5,    // 3×3 去噪窗口内最少 mask 像素数（含自身）
   MIN_AREA: 16,      // 连通域最小像素数
   AREA_LOG_SPAN: 0.7,// 相对中位面积的对数容差
   ASPECT_LO: 0.55,   // 外接框长宽比下限
@@ -33,7 +34,7 @@ export function detectBlobs(img: ImageData): DetectResult {
     for (let x = 1; x < w - 1; x++) {
       let n = 0
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) n += mask[(y + dy) * w + x + dx]
-      den[y * w + x] = n >= 5 ? 1 : 0
+      den[y * w + x] = n >= SEG.DENOISE_MIN ? 1 : 0
     }
   }
   // 3. 4-连通域（迭代栈，避免递归爆栈）
