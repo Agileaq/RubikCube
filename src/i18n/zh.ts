@@ -52,7 +52,7 @@ export const zh: Dict = {
     retake: '重拍',
     confirm: '确认填入',
     cancel: '取消',
-    rotate: '旋转',
+    chooseFace: '选择要拍的面',
     lowConfidence: '低置信度，请核对',
     centerMismatch: '中心是 {x}，当前面应为 {f}，请确认方向',
     cameraDenied: '无法访问相机，请改用上传图片',

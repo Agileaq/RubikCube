@@ -10,7 +10,7 @@ import { LocaleSwitcher } from '../components/LocaleSwitcher'
 import { ScannerOverlay } from '../components/ScannerOverlay'
 
 export default function Paint() {
-  const { cube, orientation, brush, remaining, paintSticker, setFace, setBrush, flip, reset, full, validation } = useApp()
+  const { cube, orientation, brush, remaining, paintSticker, setBrush, flip, reset, full, validation } = useApp()
   const { t } = useI18n()
   const [scanning, setScanning] = useState(false)
 
@@ -36,11 +36,7 @@ export default function Paint() {
         <button className="reset-btn" onClick={() => setScanning(true)}>{t.scan.open}</button>
         <button className="reset-btn" onClick={reset}>{t.paint.reset}</button>
       </div>
-      {scanning && (
-        <ScannerOverlay face={orientation === 'default' ? 'U' : 'D'}
-          onConfirm={colors => { setFace(orientation === 'default' ? 'U' : 'D', colors); setScanning(false) }}
-          onClose={() => setScanning(false)} />
-      )}
+      {scanning && <ScannerOverlay onClose={() => setScanning(false)} />}
 
       {full && validation && !validation.solvable && (
         <p className="unsolvable">{t.paint.unsolvable}</p>

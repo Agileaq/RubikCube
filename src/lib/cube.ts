@@ -10,6 +10,19 @@ export const COLORS: Color[] = ['W', 'R', 'O', 'Y', 'G', 'B']
 // opposite corner D/B/R: yellow / blue / red (req 5).
 export const CENTERS: Record<Face, Color> = { U: 'W', D: 'Y', L: 'O', R: 'R', F: 'G', B: 'B' }
 
+// Face-on viewing orientation per face (Singmaster convention): which face's
+// center borders each edge of face F when viewed head-on in the orientation
+// implied by the facelet indexing (0,1,2 = top row). Derived from and verified
+// against solver.ts toCubies corner/edge groupings — see cube.test.ts.
+export const ADJACENT: Record<Face, { up: Face; right: Face; down: Face; left: Face }> = {
+  U: { up: 'B', right: 'R', down: 'F', left: 'L' },
+  D: { up: 'F', right: 'R', down: 'B', left: 'L' },
+  F: { up: 'U', right: 'R', down: 'D', left: 'L' },
+  B: { up: 'U', right: 'L', down: 'D', left: 'R' },
+  L: { up: 'U', right: 'F', down: 'D', left: 'B' },
+  R: { up: 'U', right: 'B', down: 'D', left: 'F' },
+}
+
 export function emptyCube(): CubeState {
   const c = {} as CubeState
   for (const f of FACES) {

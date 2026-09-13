@@ -128,7 +128,7 @@ export const ar: Dict = {
     retake: 'إعادة الالتقاط',
     confirm: 'تعبئة',
     cancel: 'إلغاء',
-    rotate: 'تدوير',
+    chooseFace: 'اختر وجهًا للمسح',
     lowConfidence: 'ثقة منخفضة، يرجى التحقق',
     centerMismatch: 'المركز يبدو {x}، هذا الوجه يجب أن يكون {f} — تحقق من الاتجاه',
     cameraDenied: 'الكاميرا غير متاحة، استخدم تحميل صورة',

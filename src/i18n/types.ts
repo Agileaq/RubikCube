@@ -48,7 +48,7 @@ export interface Dict {
     retake: string
     confirm: string
     cancel: string
-    rotate: string
+    chooseFace: string // pick step: choose which face to scan
     lowConfidence: string
     centerMismatch: string // {x}=seen center color name, {f}=expected face color name
     cameraDenied: string

@@ -10,11 +10,12 @@ export interface FaceImageOpts {
   seams?: boolean   // 1px 深色缝线（贴纸款模拟；min-variance 须避开）
   rot?: number      // 内容顺时针旋转的 90° 次数——转配色，不转图像
   glare?: number[]  // 加高光圆的格子下标（0-8，行优先，屏幕朝向）
+  blotch?: { index: number; dx: number; dy: number } // 实心异色圆斑（干扰方差选窗）
   size?: number     // 正方形边长，默认 384
   bg?: Rgb          // 引导框外背景，默认深灰
 }
 
-// 顺时针旋转 3×3 一次（与 ScannerOverlay 的 rot90 同构）
+// 顺时针旋转 3×3 一次（旋转配色，不转图像）
 const rot90 = (g: Color[][]): Color[][] => [0, 1, 2].map(c => [0, 1, 2].map(r => g[2 - r][c]))
 
 export function makeFaceImage(colors: Color[], opts: FaceImageOpts = {}): ImageData {
@@ -45,6 +46,21 @@ export function makeFaceImage(colors: Color[], opts: FaceImageOpts = {}): ImageD
         for (let y = Math.floor(cy - rad); y <= Math.ceil(cy + rad); y++) {
           for (let x = Math.floor(cx - rad); x <= Math.ceil(cx + rad); x++) {
             if (Math.hypot(x - cx, y - cy) <= rad) put(x, y, { r: 252, g: 252, b: 252 })
+          }
+        }
+      }
+      // 异色圆斑：半径 0.17·cell，圆心=格中心+(dx,dy)·cell（dx/dy 为格宽比例）。
+      // 斑色取与该格真色 ΔE 最远的蓝（该格本就是蓝时取白）；两者都不触发
+      // classify 的白色预判/高光剔除，干扰只来自方差选窗。
+      if (opts.blotch && opts.blotch.index === r * 3 + c) {
+        const { dx, dy } = opts.blotch
+        const cx = off + (c + 0.5 + dx) * cell, cy = off + (r + 0.5 + dy) * cell
+        const rad = cell * 0.17
+        const blobHex = COLOR_HEX[grid[r][c] === 'B' ? 'W' : 'B']
+        const rgb = hexToRgb(blobHex)
+        for (let y = Math.floor(cy - rad); y <= Math.ceil(cy + rad); y++) {
+          for (let x = Math.floor(cx - rad); x <= Math.ceil(cx + rad); x++) {
+            if (Math.hypot(x - cx, y - cy) <= rad) put(x, y, rgb)
           }
         }
       }

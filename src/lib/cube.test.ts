@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { CENTERS, emptyCube, solvedCube, cloneCube, remainingCounts, isFull, visibleFaces } from './cube'
+import { ADJACENT, CENTERS, FACES, emptyCube, solvedCube, cloneCube, remainingCounts, isFull, visibleFaces } from './cube'
+import type { Face } from '../types'
 
 describe('cube model', () => {
   it('empty cube has 6 fixed centers and 48 nulls', () => {
@@ -63,5 +64,61 @@ describe('cube model', () => {
   it('isFull false when any null', () => {
     const c = solvedCube(); c.U[0] = null
     expect(isFull(c)).toBe(false)
+  })
+})
+
+// 方位十字与选面流程共用的观察朝向表：每个面的“正面视角”下四边各邻哪个面。
+// 表值必须与 cubie.ts 的 CORNER_FACELETS/EDGE_FACELETS（toCubies 的输入）一致。
+describe('ADJACENT (face-on viewing orientation)', () => {
+  const OPP: Record<Face, Face> = { U: 'D', D: 'U', L: 'R', R: 'L', F: 'B', B: 'F' }
+  const DIRS = ['up', 'right', 'down', 'left'] as const
+
+  it('is mutually consistent: every face named on F’s cross names F back on its own cross', () => {
+    for (const f of FACES) {
+      const cross = DIRS.map(d => ADJACENT[f][d])
+      expect(new Set(cross).size).toBe(4)          // 4 个互不相同的邻面
+      for (const g of cross) {
+        expect(g).not.toBe(f)                      // 自身不相邻
+        expect(g).not.toBe(OPP[f])                 // 对面不相邻
+        // 几何对称：F 的某条边邻 G ⇔ G 的十字上也含 F。方向槽位由两面各自的
+        // 正面视角决定（U.down=F ⇔ F.up=U，但 U.up=B ⇔ B.up=U），故按集合校验。
+        expect(Object.values(ADJACENT[g])).toContain(f)
+      }
+    }
+  })
+
+  it('opposite faces never share a cross edge (W-Y, O-R, G-B center pairs)', () => {
+    // 面对面相反 ⇔ 中心色相反：W-Y (U/D)、O-R (L/R)、G-B (F/B)
+    for (const f of FACES) {
+      for (const dir of DIRS) {
+        const g = ADJACENT[f][dir]
+        const pair = new Set([CENTERS[f], CENTERS[g]])
+        expect(pair).not.toEqual(new Set(['W', 'Y']))
+        expect(pair).not.toEqual(new Set(['O', 'R']))
+        expect(pair).not.toEqual(new Set(['G', 'B']))
+      }
+    }
+  })
+
+  it('spot-checks pin each face against a toCubies corner grouping', () => {
+    // U: UBR = [U2,B0,R2]（cubie.ts CORNER_FACELETS[3]）——U 右上角面片邻 B(上)/R(右)
+    expect(ADJACENT.U.up).toBe('B')
+    expect(ADJACENT.U.right).toBe('R')
+    // D: DFR = [D2,F8,R6]（CORNER_FACELETS[4]）——D 右上角面片邻 F(上)/R(右)
+    expect(ADJACENT.D.up).toBe('F')
+    expect(ADJACENT.D.right).toBe('R')
+    // F: URF = [U8,R0,F2]（CORNER_FACELETS[0]）——F 右上角面片邻 U(上)/R(右)
+    expect(ADJACENT.F.up).toBe('U')
+    expect(ADJACENT.F.right).toBe('R')
+    // B: UBR = [U2,B0,R2]——B0 是 B 的左上角面片，邻 U(上)/R(左)
+    expect(ADJACENT.B.up).toBe('U')
+    expect(ADJACENT.B.left).toBe('R')
+    // L: UFL = [U6,F0,L2]——L2 是 L 的右上角面片，邻 U(上)/F(右)
+    expect(ADJACENT.L.up).toBe('U')
+    expect(ADJACENT.L.right).toBe('F')
+    // R: URF = [U8,R0,F2]——R0 是 R 的左上角面片，邻 U(上)/F(左)；UBR 的 R2 邻 B(右)
+    expect(ADJACENT.R.up).toBe('U')
+    expect(ADJACENT.R.left).toBe('F')
+    expect(ADJACENT.R.right).toBe('B')
   })
 })

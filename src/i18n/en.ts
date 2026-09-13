@@ -128,7 +128,7 @@ export const en: Dict = {
     retake: 'Retake',
     confirm: 'Fill in',
     cancel: 'Cancel',
-    rotate: 'Rotate',
+    chooseFace: 'Choose a face to scan',
     lowConfidence: 'Low confidence, please verify',
     centerMismatch: 'Center reads {x}, this face should be {f} — check the orientation',
     cameraDenied: 'Camera unavailable, use image upload instead',

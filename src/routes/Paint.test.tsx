@@ -34,9 +34,12 @@ describe('Paint screen', () => {
     expect(screen.queryByText(/填色状态不可解/)).not.toBeInTheDocument()
   })
 
-  it('scan button opens the scanner overlay', () => {
+  it('scan button opens the scanner overlay on the pick step', () => {
     renderPaint()
     act(() => { screen.getByText('拍照识别').click() })
-    expect(screen.getByText('拍照识别色块')).toBeInTheDocument()
+    expect(screen.getByText('选择要拍的面')).toBeInTheDocument()
+    for (const f of ['U', 'D', 'L', 'R', 'F', 'B']) {
+      expect(screen.getByTestId(`scan-face-${f}`)).toBeInTheDocument()
+    }
   })
 })

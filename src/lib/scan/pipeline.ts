@@ -1,7 +1,7 @@
 // src/lib/scan/pipeline.ts
 // 修订 1：定点采样取代连通域分割。不找色块——对引导框区域按 3×3 等分，
 // 每格在 ±15% 偏移的 9 个候选窗口中取像素方差最小者（避开拼缝/高光），
-// 喂给 classify.ts。恒成功：对齐偏差由核对 UI（旋转/点格改色）兜底。
+// 喂给 classify.ts。恒成功：对齐偏差由核对 UI（方位十字 + 点格改色）兜底。
 import type { Color } from '../../types'
 import type { Rgb } from '../colors'
 import { classifyPatch } from './classify'
@@ -15,8 +15,8 @@ export const GUIDE_FRAC = 0.78
 export const CELL_INNER = 0.4
 // 避缝/避高光的窗口偏移搜索（相对格宽）
 export const REFINE_OFFS = [-0.15, 0, 0.15]
-// 单窗口采样像素上限（步长 2）
-const MAX_SAMPLES = 400
+// 单窗口采样像素上限（步长 2；384px 图的窗口为 21×21=441 个候选，400 会截断）
+const MAX_SAMPLES = 500
 
 function windowBounds(img: ImageData, cx: number, cy: number, half: number) {
   return {
@@ -50,8 +50,10 @@ function varianceScore(px: Rgb[]): number {
 }
 
 export function scanFace(img: ImageData): ScanResult {
-  const off = ((1 - GUIDE_FRAC) / 2) * img.width
-  const cell = (GUIDE_FRAC * img.width) / 3
+  // capture.ts 保证输出正方形；取 min 做 API 误用防护，非正方形输入不越界
+  const size = Math.min(img.width, img.height)
+  const off = ((1 - GUIDE_FRAC) / 2) * size
+  const cell = (GUIDE_FRAC * size) / 3
   const half = (CELL_INNER * cell) / 2
   const cells = [0, 1, 2].map(r => [0, 1, 2].map(c => {
     const cx = off + (c + 0.5) * cell

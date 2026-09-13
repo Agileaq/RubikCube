@@ -128,7 +128,7 @@ export const fr: Dict = {
     retake: 'Reprendre',
     confirm: 'Remplir',
     cancel: 'Annuler',
-    rotate: 'Pivoter',
+    chooseFace: 'Choisissez une face à scanner',
     lowConfidence: 'Confiance faible, à vérifier',
     centerMismatch: 'Le centre indique {x}, cette face devrait être {f} — vérifiez l\u2019orientation',
     cameraDenied: 'Caméra indisponible, utilisez le téléversement d\u2019image',
