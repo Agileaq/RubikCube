@@ -354,7 +354,7 @@ export function makeGridImage(colors: (Color | null)[9], opts: GridOpts = {}): I
           const dist = Math.hypot(lx - ccx, ly - ccy)
           if (dist <= step * 0.36) {
             px = cellColor(k) ?? bg
-            if (opts.glare?.includes(k) && dist < step * 0.12) px = { r: 252, g: 252, b: 252 }
+            if (opts.glare?.includes(k) && dist < step * 0.06) px = { r: 252, g: 252, b: 252 }
           }
         }
       }
@@ -1113,9 +1113,9 @@ describe('ScannerOverlay', () => {
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
     await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
     await screen.findByTestId('scan-grid')
-    const before = screen.getByTestId('scan-grid').textContent
+    const before = screen.getByTestId('scan-cell-0').style.background
     await act(async () => { screen.getByTestId('scan-rotate').click() })
-    expect(screen.getByTestId('scan-grid').textContent).not.toBe(before)
+    expect(screen.getByTestId('scan-cell-0').style.background).not.toBe(before)
   })
 })
 ```
