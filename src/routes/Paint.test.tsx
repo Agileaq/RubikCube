@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, act } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AppProvider } from '../state/AppContext'
 import { I18nProvider } from '../i18n'
@@ -32,5 +32,11 @@ describe('Paint screen', () => {
     expect(screen.queryByText('教学解')).not.toBeInTheDocument()
     expect(screen.queryByText('Kociemba解')).not.toBeInTheDocument()
     expect(screen.queryByText(/填色状态不可解/)).not.toBeInTheDocument()
+  })
+
+  it('scan button opens the scanner overlay', () => {
+    renderPaint()
+    act(() => { screen.getByText('拍照识别').click() })
+    expect(screen.getByText('拍照识别色块')).toBeInTheDocument()
   })
 })

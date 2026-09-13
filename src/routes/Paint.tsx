@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../state/useApp'
 import { useI18n } from '../i18n'
@@ -6,10 +7,12 @@ import { Palette } from '../components/Palette'
 import { FlipButton } from '../components/FlipButton'
 import { BuildInfo } from '../components/BuildInfo'
 import { LocaleSwitcher } from '../components/LocaleSwitcher'
+import { ScannerOverlay } from '../components/ScannerOverlay'
 
 export default function Paint() {
-  const { cube, orientation, brush, remaining, paintSticker, setBrush, flip, reset, full, validation } = useApp()
+  const { cube, orientation, brush, remaining, paintSticker, setFace, setBrush, flip, reset, full, validation } = useApp()
   const { t } = useI18n()
+  const [scanning, setScanning] = useState(false)
 
   return (
     <div className="app paint">
@@ -28,6 +31,13 @@ export default function Paint() {
       <p className="hint">{t.paint.hint}</p>
 
       <Palette remaining={remaining} brush={brush} onPick={setBrush} />
+
+      <button className="reset-btn" onClick={() => setScanning(true)}>{t.scan.open}</button>
+      {scanning && (
+        <ScannerOverlay face={orientation === 'default' ? 'U' : 'D'}
+          onConfirm={colors => { setFace(orientation === 'default' ? 'U' : 'D', colors); setScanning(false) }}
+          onClose={() => setScanning(false)} />
+      )}
 
       {full && validation && !validation.solvable && (
         <p className="unsolvable">{t.paint.unsolvable}</p>
