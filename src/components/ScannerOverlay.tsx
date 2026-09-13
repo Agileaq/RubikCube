@@ -138,7 +138,8 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
                   <button key={i} data-testid={`scan-cell-${i}`}
                     className={'scan-cell' + (cell?.low ? ' low' : '')}
                     style={{ background: color ? COLOR_HEX[color] : 'transparent' }}
-                    onClick={() => setFixing(i)} />
+                    disabled={i === 4}
+                    onClick={i === 4 ? undefined : () => setFixing(i)} />
                 )
               }))}
             </div>
@@ -157,7 +158,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
             )}
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-rotate"
-                onClick={() => { setRot(r => (r + 1) % 4); setOverrides(o => rot90(o)) }}>{t.scan.rotate}</button>
+                onClick={() => { setRot(r => (r + 1) % 4); setOverrides(o => rot90(o)); setFixing(null) }}>{t.scan.rotate}</button>
               <button className="solve-link" data-testid="scan-retake" onClick={() => setResult(null)}>{t.scan.retake}</button>
               <button className="solve-link" data-testid="scan-confirm" disabled={!complete} onClick={confirm}>{t.scan.confirm}</button>
             </div>
