@@ -30,8 +30,8 @@ describe('classifyPatch', () => {
     expect(r.low).toBe(true)
   })
   it('glare pixels (V>0.97 & S<0.1) are excluded before classification', () => {
-    const red = many({ r: 196, g: 30, b: 58 }, 60)
-    const glare = many({ r: 255, g: 255, b: 255 }, 4)
+    const red = many({ r: 196, g: 30, b: 58 }, 30)
+    const glare = many({ r: 255, g: 255, b: 255 }, 34)
     expect(classifyPatch([...red, ...glare]).color).toBe('R')
   })
 })
