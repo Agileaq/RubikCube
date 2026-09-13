@@ -1,36 +1,71 @@
 // src/lib/scan/pipeline.ts
+// 修订 1：定点采样取代连通域分割。不找色块——对引导框区域按 3×3 等分，
+// 每格在 ±15% 偏移的 9 个候选窗口中取像素方差最小者（避开拼缝/高光），
+// 喂给 classify.ts。恒成功：对齐偏差由核对 UI（旋转/点格改色）兜底。
 import type { Color } from '../../types'
 import type { Rgb } from '../colors'
-import { detectBlobs, type Blob } from './segment'
-import { orderGrid } from './geometry'
 import { classifyPatch } from './classify'
 
 export interface ScanCell { color: Color; confidence: number; low: boolean }
-export type ScanResult =
-  | { ok: true; cells: ScanCell[][]; center: Color }
-  | { ok: false; reason: 'blobs'; found: number }
-  | { ok: false; reason: 'grid' }
+export interface ScanResult { ok: true; cells: ScanCell[][]; center: Color }
 
-// 取 blob 外接框内圈 40% 区域的像素（边缘 30% 裁掉，规避格间渗色）。
-function patchPixels(img: ImageData, b: Blob): Rgb[] {
-  const bw = b.maxX - b.minX + 1, bh = b.maxY - b.minY + 1
-  const x0 = Math.round(b.minX + bw * 0.3), x1 = Math.round(b.maxX - bw * 0.3)
-  const y0 = Math.round(b.minY + bh * 0.3), y1 = Math.round(b.maxY - bh * 0.3)
-  const out: Rgb[] = []
-  for (let y = y0; y <= y1; y++) {
-    for (let x = x0; x <= x1; x++) {
+// 引导框边长占正方形图像的比例（居中；UI 的 .scan-guide 同为 78%）
+export const GUIDE_FRAC = 0.78
+// 每格采样窗口边长占格宽的比例
+export const CELL_INNER = 0.4
+// 避缝/避高光的窗口偏移搜索（相对格宽）
+export const REFINE_OFFS = [-0.15, 0, 0.15]
+// 单窗口采样像素上限（步长 2）
+const MAX_SAMPLES = 400
+
+function windowBounds(img: ImageData, cx: number, cy: number, half: number) {
+  return {
+    x0: Math.max(0, Math.round(cx - half)),
+    x1: Math.min(img.width - 1, Math.round(cx + half)),
+    y0: Math.max(0, Math.round(cy - half)),
+    y1: Math.min(img.height - 1, Math.round(cy + half)),
+  }
+}
+
+// 窗口内像素（步长 2，上限 ~400）
+function windowPixels(img: ImageData, cx: number, cy: number, half: number): Rgb[] {
+  const { x0, x1, y0, y1 } = windowBounds(img, cx, cy, half)
+  const px: Rgb[] = []
+  for (let y = y0; y <= y1 && px.length < MAX_SAMPLES; y += 2) {
+    for (let x = x0; x <= x1 && px.length < MAX_SAMPLES; x += 2) {
       const o = (y * img.width + x) * 4
-      out.push({ r: img.data[o], g: img.data[o + 1], b: img.data[o + 2] })
+      px.push({ r: img.data[o], g: img.data[o + 1], b: img.data[o + 2] })
     }
   }
-  return out
+  return px
+}
+
+// score = 逐通道方差之和：纯色格 ≈ 0，跨缝/跨高光显著增大
+function varianceScore(px: Rgb[]): number {
+  const n = px.length
+  if (!n) return Infinity
+  const sum = (f: (p: Rgb) => number) => px.reduce((s, p) => s + f(p), 0)
+  const mr = sum(p => p.r) / n, mg = sum(p => p.g) / n, mb = sum(p => p.b) / n
+  return sum(p => (p.r - mr) ** 2 + (p.g - mg) ** 2 + (p.b - mb) ** 2) / n
 }
 
 export function scanFace(img: ImageData): ScanResult {
-  const det = detectBlobs(img)
-  if (!det.ok) return det
-  const g = orderGrid(det.blobs)
-  if (!g.ok) return g
-  const cells = g.grid.map(row => row.map(b => classifyPatch(patchPixels(img, b))))
+  const off = ((1 - GUIDE_FRAC) / 2) * img.width
+  const cell = (GUIDE_FRAC * img.width) / 3
+  const half = (CELL_INNER * cell) / 2
+  const cells = [0, 1, 2].map(r => [0, 1, 2].map(c => {
+    const cx = off + (c + 0.5) * cell
+    const cy = off + (r + 0.5) * cell
+    let best: Rgb[] = []
+    let bestScore = Infinity
+    for (const dy of REFINE_OFFS) {
+      for (const dx of REFINE_OFFS) {
+        const px = windowPixels(img, cx + dx * cell, cy + dy * cell, half)
+        const score = varianceScore(px)
+        if (score < bestScore) { bestScore = score; best = px }
+      }
+    }
+    return classifyPatch(best)
+  }))
   return { ok: true, cells, center: cells[1][1].color }
 }

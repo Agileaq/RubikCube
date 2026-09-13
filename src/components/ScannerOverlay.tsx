@@ -31,11 +31,10 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   const streamRef = useRef<MediaStream | null>(null)
   const [cameraDenied, setCameraDenied] = useState(false)
   const [result, setResult] = useState<ScanResult | null>(null)
-  const [captured, setCaptured] = useState<ImageData | null>(null)
+  const [decodeFailed, setDecodeFailed] = useState(false)
   const [rot, setRot] = useState(0)
   const [fixing, setFixing] = useState<number | null>(null)
   const [overrides, setOverrides] = useState<(Color | undefined)[][]>(emptyOverrides)
-  const frameRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     let dead = false
@@ -53,7 +52,6 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   }, [])
 
   const runScan = useCallback((img: ImageData) => {
-    setCaptured(img)
     setResult(scanFace(img))
     setRot(0); setFixing(null); setOverrides(emptyOverrides())
   }, [])
@@ -62,26 +60,19 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
     const v = videoRef.current
     if (v && v.videoWidth > 0) runScan(grabVideoFrame(v))
   }
-  // 解码失败同样走“未识别”引导 + 重拍路径，不再静默吞掉
+  // 图像解码失败走独立 decodeFailed 引导 + 重拍路径（定点采样恒成功，无识别失败分支）
   const onFile = (f: File | undefined) => {
-    if (f) imageDataFromFile(f).then(runScan).catch(() => setResult({ ok: false, reason: 'blobs', found: 0 }))
+    if (f) imageDataFromFile(f).then(runScan).catch(() => setDecodeFailed(true))
   }
 
-  // 失败页展示抓拍原图（putImageData 回放）；jsdom 无 2D 上下文，安全跳过
-  useEffect(() => {
-    if (!(result && !result.ok) || !captured) return
-    const ctx = frameRef.current?.getContext('2d')
-    ctx?.putImageData(captured, 0, 0)
-  }, [result, captured])
-
-  const cells: (ScanCell | null)[][] = result?.ok
+  const cells: (ScanCell | null)[][] = result
     ? Array.from({ length: rot }, () => 0).reduce<ScanCell[][]>(g => rot90(g), result.cells)
     : []
   const flat = cells.flat()
   // result.center 与 result.cells[1][1].color 同源（见 pipeline.ts），直接用中心字段
-  const centerColor = result?.ok ? result.center : null
+  const centerColor = result?.center ?? null
   const mismatch = centerColor !== null && centerColor !== CENTERS[face]
-  const complete = result?.ok === true && flat.every(c => c !== null)
+  const complete = result !== null && flat.every(c => c !== null)
   const name = (c: Color) => (locale === 'zh' ? COLOR_NAME[c] : c)
 
   const confirm = () => {
@@ -89,6 +80,8 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
     const ov = overrides.flat() // 与显示 flat 同序（overrides 随网格旋转）
     onConfirm(flat.map((c, i) => (i === 4 ? null : ov[i] ?? c!.color)))
   }
+
+  const retake = () => { setResult(null); setDecodeFailed(false) }
 
   // 上传控件只定义一次；相机可用/被拒两种状态下都只渲染这一个 scan-file 输入
   const uploadControl = (
@@ -106,10 +99,19 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
         <button className="scanner-close" aria-label={t.scan.cancel} onClick={onClose}>✕</button>
         {/* 相机流常驻挂载：重拍后重新显示同一 <video> 即可恢复画面，无需重新取流。
             iOS 真机加固 #3：playsInline/muted/autoPlay 缺一不可 */}
-        <video ref={videoRef} playsInline muted autoPlay data-testid="scan-video"
-          style={{ display: result || cameraDenied ? 'none' : undefined }} />
-        {!result && (
+        <div className="scan-viewfinder">
+          <video ref={videoRef} playsInline muted autoPlay data-testid="scan-video"
+            style={{ display: result || decodeFailed || cameraDenied ? 'none' : undefined }} />
+          {/* 取景引导框：与 pipeline 的 GUIDE_FRAC 同为 78%（styles.css），所见即采样 */}
+          {!result && !decodeFailed && !cameraDenied && (
+            <div className="scan-guide" aria-hidden="true">
+              {Array.from({ length: 9 }, (_, i) => <i key={i} />)}
+            </div>
+          )}
+        </div>
+        {!result && !decodeFailed && (
           <div className="scanner-live">
+            {!cameraDenied && <p className="scan-hint">{t.scan.alignHint}</p>}
             {!cameraDenied ? (
               <div className="scanner-actions">
                 <button className="solve-link" onClick={onCapture}>{t.scan.capture}</button>
@@ -123,20 +125,15 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
             )}
           </div>
         )}
-        {result && !result.ok && (
+        {!result && decodeFailed && (
           <div>
             <p className="scan-warn" data-testid="scan-error">{t.scan.notRecognized}</p>
-            {result.reason === 'blobs' && (
-              <p className="scan-warn">{t.scan.foundCount.replace('{n}', String(result.found))}</p>
-            )}
-            <canvas className="scan-frame" data-testid="scan-frame" ref={frameRef}
-              width={captured?.width ?? 1} height={captured?.height ?? 1} />
             <div className="scanner-actions">
-              <button className="solve-link" data-testid="scan-retake" onClick={() => setResult(null)}>{t.scan.retake}</button>
+              <button className="solve-link" data-testid="scan-retake" onClick={retake}>{t.scan.retake}</button>
             </div>
           </div>
         )}
-        {result?.ok && (
+        {result && (
           <div>
             {mismatch && (
               <p className="scan-warn" data-testid="scan-warn">
@@ -174,7 +171,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-rotate"
                 onClick={() => { setRot(r => (r + 1) % 4); setOverrides(o => rot90(o)); setFixing(null) }}>{t.scan.rotate}</button>
-              <button className="solve-link" data-testid="scan-retake" onClick={() => setResult(null)}>{t.scan.retake}</button>
+              <button className="solve-link" data-testid="scan-retake" onClick={retake}>{t.scan.retake}</button>
               <button className="solve-link" data-testid="scan-confirm" disabled={!complete} onClick={confirm}>{t.scan.confirm}</button>
             </div>
           </div>

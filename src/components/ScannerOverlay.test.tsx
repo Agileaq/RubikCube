@@ -7,9 +7,10 @@ import { ScannerOverlay } from './ScannerOverlay'
 
 const scanFace = vi.fn()
 vi.mock('../lib/scan/pipeline', () => ({ scanFace: (...a: unknown[]) => scanFace(...a) }))
+const imageDataFromFile = vi.fn()
 vi.mock('../lib/scan/capture', () => ({
   grabVideoFrame: () => { throw new Error('no video in jsdom') },
-  imageDataFromFile: () => Promise.resolve(new ImageData(8, 8)),
+  imageDataFromFile: (...a: unknown[]) => imageDataFromFile(...a),
 }))
 
 // ScanResult.ok.cells 是 3×3 嵌套结构（ScanCell[][]），把 9 色按行切成 3 行
@@ -32,7 +33,11 @@ function mount(onConfirm = vi.fn(), face: Face = 'U') {
   return { onConfirm, onClose }
 }
 
-beforeEach(() => scanFace.mockReset())
+beforeEach(() => {
+  scanFace.mockReset()
+  imageDataFromFile.mockReset()
+  imageDataFromFile.mockResolvedValue(new ImageData(8, 8))
+})
 
 describe('ScannerOverlay', () => {
   it('falls back to upload mode when camera is unavailable (jsdom)', async () => {
@@ -65,20 +70,20 @@ describe('ScannerOverlay', () => {
     await waitFor(() => expect(screen.getByTestId('scan-warn')).toBeTruthy())
   })
 
-  it('failed detection shows guidance and retake', async () => {
-    scanFace.mockReturnValue({ ok: false, reason: 'blobs', found: 4 })
+  it('image decode failure shows guidance (decodeFailed), no captured-frame canvas', async () => {
+    imageDataFromFile.mockRejectedValueOnce(new Error('bad image'))
     mount()
     const input = await screen.findByTestId('scan-file')
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
     await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
     await waitFor(() => expect(screen.getByTestId('scan-error')).toBeTruthy())
     expect(screen.getByTestId('scan-retake')).toBeTruthy()
-    expect(screen.getByTestId('scan-frame')).toBeTruthy()
-    expect(screen.getByText('识别到 4 格')).toBeTruthy()
+    expect(screen.queryByTestId('scan-frame')).toBeNull()
+    expect(scanFace).not.toHaveBeenCalled()
   })
 
-  it('retake keeps the live video element mounted (black-screen regression)', async () => {
-    scanFace.mockReturnValue({ ok: false, reason: 'blobs', found: 8 })
+  it('decode-failure retake returns to live view, video still mounted (black-screen regression)', async () => {
+    imageDataFromFile.mockRejectedValueOnce(new Error('bad image'))
     mount()
     const input = await screen.findByTestId('scan-file')
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
@@ -86,6 +91,7 @@ describe('ScannerOverlay', () => {
     await waitFor(() => expect(screen.getByTestId('scan-error')).toBeTruthy())
     await act(async () => { screen.getByTestId('scan-retake').click() })
     expect(screen.getByTestId('scan-video')).toBeTruthy()
+    expect(await screen.findByText('上传图片')).toBeTruthy()
   })
 
   it('rotate button cycles the preview grid orientation', async () => {

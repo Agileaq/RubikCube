@@ -133,7 +133,7 @@ export const es: Dict = {
     centerMismatch: 'El centro lee {x}, esta cara debería ser {f} — comprueba la orientación',
     cameraDenied: 'Cámara no disponible, usa la subida de imagen',
     notRecognized: 'No se detectó una cuadrícula 3×3 completa. Apunta de frente, con luz uniforme, y reintenta',
-    foundCount: '{n} celdas detectadas',
+    alignHint: 'Alinea la cara dentro del marco',
   },
   update: {
     newVersion: 'Nueva versión disponible',
