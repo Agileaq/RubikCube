@@ -11,6 +11,7 @@ export interface AppValue {
   validation: { solvable: boolean; reason?: string; detail?: string } | null
   setBrush(c: Color): void
   paintSticker(face: Face, index: number): void
+  setFace(face: Face, colors: (Color | null)[]): void
   flip(): void
   reset(): void
 }
@@ -34,6 +35,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     paintSticker(face, index) {
       if (index === 4) return
       setCube(prev => { const next = cloneCube(prev); next[face][index] = next[face][index] === brush ? null : brush; return next })
+    },
+    setFace(face, colors) {
+      setCube(prev => {
+        const next = cloneCube(prev)
+        for (let i = 0; i < 9; i++) {
+          if (i === 4) continue
+          next[face][i] = colors[i] ?? null
+        }
+        return next
+      })
     },
     flip() { setOrientation(o => (o === 'default' ? 'flipped' : 'default')) },
     reset() { clearPaint(); setCube(emptyCube()); setOrientation('default') },

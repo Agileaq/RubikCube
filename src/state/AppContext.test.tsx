@@ -59,4 +59,27 @@ describe('AppContext', () => {
     act(() => { screen.getByText('paint2').click() })
     expect(screen.getByTestId('remW').textContent).toBe('8')
   })
+
+  function ScanProbe() {
+    const { remaining, setBrush, paintSticker, setFace } = useApp()
+    return (
+      <div>
+        <span data-testid="remW">{remaining.W}</span>
+        <span data-testid="remG">{remaining.G}</span>
+        <button onClick={() => setBrush('W')}>bw</button>
+        <button onClick={() => paintSticker('U', 0)}>paint</button>
+        <button onClick={() => setFace('U', ['G','G','G','G','G','G','G','G','G'])}>scanfill</button>
+      </div>
+    )
+  }
+
+  it('setFace overwrites the 8 non-center stickers in one shot', () => {
+    render(<AppProvider><ScanProbe /></AppProvider>)
+    act(() => { screen.getByText('bw').click() })
+    act(() => { screen.getByText('paint').click() })
+    expect(screen.getByTestId('remW').textContent).toBe('7')
+    act(() => { screen.getByText('scanfill').click() })
+    expect(screen.getByTestId('remW').textContent).toBe('8')
+    expect(screen.getByTestId('remG').textContent).toBe('0')
+  })
 })
