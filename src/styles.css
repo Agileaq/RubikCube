@@ -97,6 +97,7 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
   background: rgba(255, 255, 255, 0.92);
   border-radius: 12px;
 }
+.paint-buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .reset-btn {
   margin: 10px auto 4px;
   padding: 9px 24px;

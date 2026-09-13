@@ -75,6 +75,17 @@ describe('ScannerOverlay', () => {
     expect(screen.getByTestId('scan-retake')).toBeTruthy()
   })
 
+  it('retake keeps the live video element mounted (black-screen regression)', async () => {
+    scanFace.mockReturnValue({ ok: false, reason: 'blobs' })
+    mount()
+    const input = await screen.findByTestId('scan-file')
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+    await waitFor(() => expect(screen.getByTestId('scan-error')).toBeTruthy())
+    await act(async () => { screen.getByTestId('scan-retake').click() })
+    expect(screen.getByTestId('scan-video')).toBeTruthy()
+  })
+
   it('rotate button cycles the preview grid orientation', async () => {
     scanFace.mockReturnValue(OK)
     mount()

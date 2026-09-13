@@ -94,17 +94,17 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
       <div className="scanner-panel">
         <h2>{t.scan.title}</h2>
         <button className="scanner-close" aria-label={t.scan.cancel} onClick={onClose}>✕</button>
+        {/* 相机流常驻挂载：重拍后重新显示同一 <video> 即可恢复画面，无需重新取流。
+            iOS 真机加固 #3：playsInline/muted/autoPlay 缺一不可 */}
+        <video ref={videoRef} playsInline muted autoPlay data-testid="scan-video"
+          style={{ display: result || cameraDenied ? 'none' : undefined }} />
         {!result && (
           <div className="scanner-live">
             {!cameraDenied ? (
-              <>
-                {/* iOS 真机加固 #3：playsInline/muted/autoPlay 缺一不可 */}
-                <video ref={videoRef} playsInline muted autoPlay data-testid="scan-video" />
-                <div className="scanner-actions">
-                  <button className="solve-link" onClick={onCapture}>{t.scan.capture}</button>
-                  {uploadControl}
-                </div>
-              </>
+              <div className="scanner-actions">
+                <button className="solve-link" onClick={onCapture}>{t.scan.capture}</button>
+                {uploadControl}
+              </div>
             ) : (
               <p className="scan-warn" data-testid="scan-camera-denied">{t.scan.cameraDenied}</p>
             )}
@@ -112,8 +112,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
               <div className="scanner-actions">{uploadControl}</div>
             )}
           </div>
-        )}
-        {result && !result.ok && (
+        )}        {result && !result.ok && (
           <div>
             <p className="scan-warn" data-testid="scan-error">{t.scan.notRecognized}</p>
             <div className="scanner-actions">

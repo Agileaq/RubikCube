@@ -32,7 +32,10 @@ export default function Paint() {
 
       <Palette remaining={remaining} brush={brush} onPick={setBrush} />
 
-      <button className="reset-btn" onClick={() => setScanning(true)}>{t.scan.open}</button>
+      <div className="paint-buttons">
+        <button className="reset-btn" onClick={() => setScanning(true)}>{t.scan.open}</button>
+        <button className="reset-btn" onClick={reset}>{t.paint.reset}</button>
+      </div>
       {scanning && (
         <ScannerOverlay face={orientation === 'default' ? 'U' : 'D'}
           onConfirm={colors => { setFace(orientation === 'default' ? 'U' : 'D', colors); setScanning(false) }}
@@ -49,7 +52,6 @@ export default function Paint() {
         </div>
       )}
 
-      <button className="reset-btn" onClick={reset}>{t.paint.reset}</button>
       <BuildInfo />
     </div>
   )
