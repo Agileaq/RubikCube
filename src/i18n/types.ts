@@ -40,6 +40,20 @@ export interface Dict {
     title: string
     sections: TutorialSectionDict[]
   }
+  scan: {
+    open: string
+    title: string
+    capture: string
+    upload: string
+    retake: string
+    confirm: string
+    cancel: string
+    rotate: string
+    lowConfidence: string
+    centerMismatch: string // {x}=seen center color name, {f}=expected face color name
+    cameraDenied: string
+    notRecognized: string
+  }
   update: {
     newVersion: string
     updateNow: string
