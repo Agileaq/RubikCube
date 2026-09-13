@@ -51,6 +51,7 @@ export const zh: Dict = {
     upload: '上传图片',
     retake: '重拍',
     confirm: '确认填入',
+    addFace: '加入',
     cancel: '取消',
     chooseFace: '选择要拍的面',
     lowConfidence: '低置信度，请核对',

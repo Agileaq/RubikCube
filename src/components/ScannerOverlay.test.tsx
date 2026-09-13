@@ -34,6 +34,9 @@ const asResult = (colors: Color[], center: Color): ScanResult => ({
 // 中心格与 cells[1][1] 同源（真实 pipeline 由 cells[1][1] 得出 center）
 const OK_U = asResult(['W', 'O', 'G', 'R', 'W', 'Y', 'G', 'W', 'R'], 'W')
 const OK_D = asResult(['Y', 'G', 'O', 'R', 'Y', 'B', 'W', 'G', 'R'], 'Y')
+const OK_L = asResult(['O', 'G', 'W', 'B', 'O', 'R', 'Y', 'O', 'G'], 'O')
+// 重扫 D 的另一组结果（与 OK_D 多数格不同，用于断言暂存被覆盖）
+const AGAIN_D = asResult(['R', 'R', 'R', 'G', 'Y', 'G', 'W', 'W', 'W'], 'Y')
 
 // 探针：把每面 8 个非中心格暴露成 data-testid="probe-<F>"（'-' 表示空）
 function Probe() {
@@ -59,12 +62,12 @@ function seedStore(done: Face[]) {
   localStorage.setItem('rc.paint', JSON.stringify(cube))
 }
 
-function mount(opts: { seedU?: boolean } = {}) {
+function mount(opts: { seedU?: boolean; onClose?: () => void } = {}) {
   seedStore(opts.seedU ? ['U'] : [])
   render(
     <I18nProvider>
       <AppProvider>
-        <ScannerOverlay onClose={() => {}} />
+        <ScannerOverlay onClose={opts.onClose ?? (() => {})} />
         <Probe />
       </AppProvider>
     </I18nProvider>,
@@ -83,6 +86,14 @@ async function upload() {
 }
 
 const pickFace = (f: Face) => act(() => { screen.getByTestId(`scan-face-${f}`).click() })
+// 结果页「加入」：暂存当前面并回枢纽
+async function stageIt() {
+  await screen.findByTestId('scan-grid')
+  await act(async () => { screen.getByTestId('scan-stage').click() })
+}
+// 枢纽缩略图第 i 格的背景色
+const thumbCell = (f: Face, i: number) =>
+  (screen.getByTestId(`scan-thumb-${f}`).querySelectorAll('i')[i] as HTMLElement).style.background
 
 beforeEach(() => {
   localStorage.clear()
@@ -92,14 +103,21 @@ beforeEach(() => {
 })
 
 describe('ScannerOverlay', () => {
-  it('opens on the pick step with 6 chips; first incomplete face preselected', async () => {
-    mount({ seedU: true })
+  it('hub with nothing staged: 6 chips, confirm-all disabled, first incomplete auto-selected', async () => {
+    mount()
     expect(await screen.findByText('选择要拍的面')).toBeTruthy()
     for (const f of FACES) expect(screen.getByTestId(`scan-face-${f}`)).toBeTruthy()
-    // 已填满的 U 打 ✓；自动预选按 FACES 顺序落到第一个未填满的 D
+    expect((screen.getByTestId('scan-confirm-all') as HTMLButtonElement).disabled).toBe(true)
+    // FACES 序第一个未填满的面（空仓 → U）自动预选
+    expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('store-complete face shows ✓ and is skipped by auto-select while incomplete faces exist', async () => {
+    mount({ seedU: true })
+    await screen.findByText('选择要拍的面')
     expect(screen.getByTestId('scan-face-done-U')).toBeTruthy()
-    expect(screen.getByTestId('scan-face-D').getAttribute('aria-pressed')).toBe('true')
     expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('scan-face-D').getAttribute('aria-pressed')).toBe('true')
   })
 
   it('picking F shows the orientation cross with expected dot colors', async () => {
@@ -117,20 +135,65 @@ describe('ScannerOverlay', () => {
     expect(dotBg('left')).toBe(rgbOf(COLOR_HEX.O))
   })
 
-  it('scan OK → confirm writes setFace and returns to pick with next incomplete selected', async () => {
+  it('加入 stages the scanned face; confirm-all writes it to the store and closes', async () => {
+    const onClose = vi.fn()
     scanFace.mockReturnValue(OK_D)
+    mount({ seedU: true, onClose })
+    await screen.findByText('选择要拍的面')
+    pickFace('D')
+    await upload()
+    await stageIt()
+    // 回到枢纽：D 显示迷你缩略图，格色 = 扫描结果（空中心格显中心色）
+    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.Y))
+    expect(thumbCell('D', 2)).toBe(rgbOf(COLOR_HEX.O))
+    expect(thumbCell('D', 4)).toBe(rgbOf(COLOR_HEX.Y))
+    // U 已满、D 已暂存 → 自动预选 L；暂存 ≥1 → 总确认可用
+    expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
+    const all = screen.getByTestId('scan-confirm-all') as HTMLButtonElement
+    expect(all.disabled).toBe(false)
+    await act(async () => { all.click() })
+    expect(screen.getByTestId('probe-D').textContent).toBe('YGORBWGR')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('staging two faces then confirm-all writes both and closes once', async () => {
+    const onClose = vi.fn()
+    scanFace.mockReturnValueOnce(OK_D).mockReturnValueOnce(OK_L)
+    mount({ seedU: true, onClose })
+    await screen.findByText('选择要拍的面')
+    pickFace('D')
+    await upload()
+    await stageIt()
+    // L 已被自动预选（U 满、D 已暂存），直接点 chip 进扫描
+    pickFace('L')
+    await upload()
+    await stageIt()
+    expect(screen.getByTestId('scan-thumb-D')).toBeTruthy()
+    expect(screen.getByTestId('scan-thumb-L')).toBeTruthy()
+    await act(async () => { screen.getByTestId('scan-confirm-all').click() })
+    expect(screen.getByTestId('probe-D').textContent).toBe('YGORBWGR')
+    expect(screen.getByTestId('probe-L').textContent).toBe('OGWBRYOG')
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('re-scanning a staged face replaces the staged entry; store untouched until confirm-all', async () => {
+    scanFace.mockReturnValueOnce(OK_D).mockReturnValueOnce(AGAIN_D)
     mount({ seedU: true })
     await screen.findByText('选择要拍的面')
     pickFace('D')
     await upload()
-    await screen.findByTestId('scan-grid')
-    await act(async () => { screen.getByTestId('scan-confirm').click() })
-    // D 面被整体写入（探针显示 8 个非中心格全有值），回到选面步
-    expect(screen.getByTestId('probe-D').textContent).toBe('YGORBWGR')
-    expect(await screen.findByText('选择要拍的面')).toBeTruthy()
-    expect(screen.getByTestId('scan-face-done-D')).toBeTruthy()
-    // U、D 已满 → 下一个未填满是 L
-    expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
+    await stageIt()
+    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.Y))
+    // 点缩略图重扫同一面，再次「加入」覆盖暂存
+    await act(async () => { screen.getByTestId('scan-thumb-D').click() })
+    await upload()
+    await stageIt()
+    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.R))
+    expect(thumbCell('D', 7)).toBe(rgbOf(COLOR_HEX.W))
+    // 总确认前不写 store
+    expect(screen.getByTestId('probe-D').textContent).toBe('--------')
+    await act(async () => { screen.getByTestId('scan-confirm-all').click() })
+    expect(screen.getByTestId('probe-D').textContent).toBe('RRRGGWWW')
   })
 
   it('rotate button is gone; cross still rendered in the result view', async () => {
@@ -171,18 +234,20 @@ describe('ScannerOverlay', () => {
     expect(await screen.findByText('上传图片')).toBeTruthy()
   })
 
-  it('color fix writes the fixed color into the same display slot on confirm', async () => {
+  it('color fix lands in the same display slot through staging and confirm-all', async () => {
     scanFace.mockReturnValue(OK_U)
     mount()
     await screen.findByText('选择要拍的面')
     pickFace('U')
     await upload()
     await screen.findByTestId('scan-grid')
-    // 修正显示格 0（原色 W → Y），确认后 0 号槽位写入 Y（无旋转，显示序即写入序）
+    // 修正显示格 0（原色 W → Y）：加入后缩略图 0 号格变 Y，总确认写入同一槽位（显示序即写入序）
     await act(async () => { screen.getByTestId('scan-cell-0').click() })
     const chip = screen.getByTestId('scan-fix').querySelector('button[data-color="Y"]') as HTMLButtonElement
     await act(async () => { chip.click() })
-    await act(async () => { screen.getByTestId('scan-confirm').click() })
+    await act(async () => { screen.getByTestId('scan-stage').click() })
+    expect(thumbCell('U', 0)).toBe(rgbOf(COLOR_HEX.Y))
+    await act(async () => { screen.getByTestId('scan-confirm-all').click() })
     expect(screen.getByTestId('probe-U').textContent).toBe('YOGRYGWR')
   })
 })

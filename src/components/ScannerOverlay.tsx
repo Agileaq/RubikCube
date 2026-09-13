@@ -10,13 +10,16 @@ import type { Color, CubeState, Face } from '../types'
 // 面名/色名仅在警示文案里插值：中文用汉字，其他语言用单字母（不新增 i18n 键）
 const COLOR_NAME: Record<Color, string> = { W: '白', Y: '黄', R: '红', O: '橙', G: '绿', B: '蓝' }
 
+// 暂存批次（修订 3）：面 → 9 格颜色（index 4 = null，与 setFace 的跳中心约定一致）
+type Staged = Partial<Record<Face, (Color | null)[]>>
+
 // 面是否已填满（8 个非中心格全部有值）
 const faceDone = (cube: CubeState, f: Face) => cube[f].every((x, i) => i === 4 || x !== null)
 // 打开时自动预选：FACES 顺序第一个未填满的面；全部填满则回退 U
 const firstPick = (cube: CubeState): Face => FACES.find(f => !faceDone(cube, f)) ?? 'U'
-// 确认后回到选面步：刚填的面视为已填满，取下一个未填满面；全满则保留刚扫的面
-const nextPick = (cube: CubeState, justDone: Face): Face =>
-  FACES.find(f => f !== justDone && !faceDone(cube, f)) ?? justDone
+// 加入后回到枢纽：FACES 顺序第一个「未暂存且未填满」的面；没有则保留刚扫的面
+const nextPick = (cube: CubeState, staged: Staged, last: Face): Face =>
+  FACES.find(f => !staged[f] && !faceDone(cube, f)) ?? last
 
 // 方位提示十字：中心点=该面中心色，四臂=标准面向视角下各边相邻面的中心色
 // （修订 2：按十字握持魔方即可对齐朝向，取代旋转按钮；纯视觉，无文字）
@@ -47,6 +50,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
   const [cameraDenied, setCameraDenied] = useState(false)
   const [step, setStep] = useState<'pick' | 'scan'>('pick')
   const [face, selectFace] = useState<Face>(() => firstPick(cube))
+  const [staged, setStaged] = useState<Staged>({})
   const [result, setResult] = useState<ScanResult | null>(null)
   const [decodeFailed, setDecodeFailed] = useState(false)
   const [fixing, setFixing] = useState<number | null>(null)
@@ -90,12 +94,25 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
   const complete = result !== null && flat.every(c => c !== null)
   const name = (c: Color) => (locale === 'zh' ? COLOR_NAME[c] : c)
 
-  const confirm = () => {
+  // 加入（修订 3）：暂存当前核对结果并回枢纽；同一面再次加入即覆盖暂存。
+  // 一口气确认前不写 store。
+  const stage = () => {
     if (!complete) return
-    setFace(face, flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color)))
+    const next: Staged = { ...staged }
+    next[face] = flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color))
+    setStaged(next)
+    selectFace(nextPick(cube, next, face))
     setResult(null); setFixing(null); setOverrides({})
-    selectFace(nextPick(cube, face))
     setStep('pick')
+  }
+
+  // 一口气确认：把所有暂存面按 FACES 序逐一写入后关闭；✕ 关闭则整批丢弃
+  const confirmAll = () => {
+    for (const f of FACES) {
+      const colors = staged[f]
+      if (colors) setFace(f, colors)
+    }
+    onClose()
   }
 
   const retake = () => { setResult(null); setDecodeFailed(false) }
@@ -135,19 +152,43 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
           )}
         </div>
         {step === 'pick' && (
-          <div className="pick-grid">
-            {FACES.map(f => (
-              <button key={f} data-testid={`scan-face-${f}`} aria-label={f}
-                aria-pressed={f === face}
-                className={'face-chip' + (f === face ? ' active' : '')}
-                style={{ background: COLOR_HEX[CENTERS[f]] }}
-                onClick={() => { selectFace(f); setStep('scan') }}>
-                {faceDone(cube, f) && (
-                  <span className="face-done" data-testid={`scan-face-done-${f}`}>✓</span>
-                )}
+          <>
+            <div className="pick-grid">
+              {FACES.map(f => {
+                const st = staged[f]
+                if (st) {
+                  // 已暂存：迷你 3×3 缩略图（空中心格显示该面中心色），点按重拍，再次加入即覆盖
+                  return (
+                    <button key={f} data-testid={`scan-thumb-${f}`} aria-label={f}
+                      aria-pressed={f === face}
+                      className={'face-thumb' + (f === face ? ' active' : '')}
+                      onClick={() => { selectFace(f); setStep('scan') }}>
+                      {st.map((c, i) => (
+                        <i key={i} style={{ background: COLOR_HEX[c ?? CENTERS[f]] }} />
+                      ))}
+                    </button>
+                  )
+                }
+                return (
+                  <button key={f} data-testid={`scan-face-${f}`} aria-label={f}
+                    aria-pressed={f === face}
+                    className={'face-chip' + (f === face ? ' active' : '')}
+                    style={{ background: COLOR_HEX[CENTERS[f]] }}
+                    onClick={() => { selectFace(f); setStep('scan') }}>
+                    {faceDone(cube, f) && (
+                      <span className="face-done" data-testid={`scan-face-done-${f}`}>✓</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="scanner-actions">
+              <button className="solve-link scan-confirm-all" data-testid="scan-confirm-all"
+                disabled={Object.keys(staged).length === 0} onClick={confirmAll}>
+                {t.scan.confirm}
               </button>
-            ))}
-          </div>
+            </div>
+          </>
         )}
         {step === 'scan' && !result && !decodeFailed && (
           <div className="scanner-live">
@@ -211,7 +252,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
             )}
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-retake" onClick={retake}>{t.scan.retake}</button>
-              <button className="solve-link" data-testid="scan-confirm" disabled={!complete} onClick={confirm}>{t.scan.confirm}</button>
+              <button className="solve-link" data-testid="scan-stage" disabled={!complete} onClick={stage}>{t.scan.addFace}</button>
             </div>
           </div>
         )}

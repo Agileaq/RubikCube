@@ -127,6 +127,7 @@ export const ru: Dict = {
     upload: 'Загрузить изображение',
     retake: 'Переснять',
     confirm: 'Заполнить',
+    addFace: 'Добавить',
     cancel: 'Отмена',
     chooseFace: 'Выберите грань для сканирования',
     lowConfidence: 'Низкая уверенность, проверьте',

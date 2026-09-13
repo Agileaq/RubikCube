@@ -47,6 +47,7 @@ export interface Dict {
     upload: string
     retake: string
     confirm: string
+    addFace: string // result view: stage the reviewed face and return to the hub
     cancel: string
     chooseFace: string // pick step: choose which face to scan
     lowConfidence: string

@@ -127,6 +127,7 @@ export const fr: Dict = {
     upload: 'Téléverser une image',
     retake: 'Reprendre',
     confirm: 'Remplir',
+    addFace: 'Ajouter',
     cancel: 'Annuler',
     chooseFace: 'Choisissez une face à scanner',
     lowConfidence: 'Confiance faible, à vérifier',

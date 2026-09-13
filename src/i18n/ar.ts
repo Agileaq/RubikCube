@@ -127,6 +127,7 @@ export const ar: Dict = {
     upload: 'تحميل صورة',
     retake: 'إعادة الالتقاط',
     confirm: 'تعبئة',
+    addFace: 'إضافة',
     cancel: 'إلغاء',
     chooseFace: 'اختر وجهًا للمسح',
     lowConfidence: 'ثقة منخفضة، يرجى التحقق',
