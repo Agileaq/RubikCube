@@ -511,3 +511,4 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .scan-frame { width: 100%; border-radius: 8px; }
 .scan-fix { display: flex; gap: 8px; justify-content: center; }
 .scan-fix .chip { width: 36px; height: 36px; }
+.paint-buttons .reset-btn { margin: 4px 0; }

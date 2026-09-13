@@ -122,7 +122,8 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
               <div className="scanner-actions">{uploadControl}</div>
             )}
           </div>
-        )}        {result && !result.ok && (
+        )}
+        {result && !result.ok && (
           <div>
             <p className="scan-warn" data-testid="scan-error">{t.scan.notRecognized}</p>
             {result.reason === 'blobs' && (
