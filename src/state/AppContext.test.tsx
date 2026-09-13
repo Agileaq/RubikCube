@@ -61,13 +61,16 @@ describe('AppContext', () => {
   })
 
   function ScanProbe() {
-    const { remaining, setBrush, paintSticker, setFace } = useApp()
+    const { cube, remaining, setBrush, paintSticker, setFace } = useApp()
     return (
       <div>
+        <span data-testid="center">{cube.U[4] ?? '∅'}</span>
         <span data-testid="remW">{remaining.W}</span>
         <span data-testid="remG">{remaining.G}</span>
         <button onClick={() => setBrush('W')}>bw</button>
+        <button onClick={() => setBrush('G')}>bg</button>
         <button onClick={() => paintSticker('U', 0)}>paint</button>
+        <button onClick={() => paintSticker('U', 1)}>paintU1</button>
         <button onClick={() => setFace('U', ['G','G','G','G','G','G','G','G','G'])}>scanfill</button>
       </div>
     )
@@ -78,8 +81,16 @@ describe('AppContext', () => {
     act(() => { screen.getByText('bw').click() })
     act(() => { screen.getByText('paint').click() })
     expect(screen.getByTestId('remW').textContent).toBe('7')
+    // Pre-paint U1 with the SAME color scanfill writes (G): under toggle
+    // semantics the scanfill G write would clear U1 (remG → 1); overwrite
+    // semantics must leave it in place (remG → 0).
+    act(() => { screen.getByText('bg').click() })
+    act(() => { screen.getByText('paintU1').click() })
+    expect(screen.getByTestId('remG').textContent).toBe('7')
     act(() => { screen.getByText('scanfill').click() })
     expect(screen.getByTestId('remW').textContent).toBe('8')
     expect(screen.getByTestId('remG').textContent).toBe('0')
+    // setFace must never touch the center: U[4] stays the fixed center 'W'.
+    expect(screen.getByTestId('center').textContent).toBe('W')
   })
 })
