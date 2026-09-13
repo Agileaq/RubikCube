@@ -100,25 +100,38 @@ describe('ADJACENT (face-on viewing orientation)', () => {
     }
   })
 
-  it('spot-checks pin each face against a toCubies corner grouping', () => {
-    // U: UBR = [U2,B0,R2]（cubie.ts CORNER_FACELETS[3]）——U 右上角面片邻 B(上)/R(右)
+  it('spot-checks pin all 24 slots against the toCubies corner groupings', () => {
+    // 全部 24 槽位逐一钉死：每条边的邻面 = 该边两端两个角块组（cubie.ts
+    // CORNER_FACELETS）中共同出现的面——任何两槽换位都逃不出这张网。
+    // U：up=B via U2∈UBR[U2,B0,R2] + U0∈ULB[U0,L0,B2]；down=F via U8∈URF[U8,R0,F2] + U6∈UFL[U6,F0,L2]
     expect(ADJACENT.U.up).toBe('B')
     expect(ADJACENT.U.right).toBe('R')
-    // D: DFR = [D2,F8,R6]（CORNER_FACELETS[4]）——D 右上角面片邻 F(上)/R(右)
+    expect(ADJACENT.U.down).toBe('F')
+    expect(ADJACENT.U.left).toBe('L')
+    // D：up=F via D2∈DFR[D2,F8,R6] + D0∈DLF[D0,L8,F6]；down=B via D8∈DRB[D8,R8,B6] + D6∈DBL[D6,B8,L6]
     expect(ADJACENT.D.up).toBe('F')
     expect(ADJACENT.D.right).toBe('R')
-    // F: URF = [U8,R0,F2]（CORNER_FACELETS[0]）——F 右上角面片邻 U(上)/R(右)
+    expect(ADJACENT.D.down).toBe('B')
+    expect(ADJACENT.D.left).toBe('L')
+    // F：up=U via F2∈URF[U8,R0,F2] + F0∈UFL[U6,F0,L2]；down=D via F8∈DFR[D2,F8,R6] + F6∈DLF[D0,L8,F6]
     expect(ADJACENT.F.up).toBe('U')
     expect(ADJACENT.F.right).toBe('R')
-    // B: UBR = [U2,B0,R2]——B0 是 B 的左上角面片，邻 U(上)/R(左)
+    expect(ADJACENT.F.down).toBe('D')
+    expect(ADJACENT.F.left).toBe('L')
+    // B：up=U via B2∈ULB[U0,L0,B2] + B0∈UBR[U2,B0,R2]；down=D via B8∈DBL[D6,B8,L6] + B6∈DRB[D8,R8,B6]
     expect(ADJACENT.B.up).toBe('U')
+    expect(ADJACENT.B.right).toBe('L')
+    expect(ADJACENT.B.down).toBe('D')
     expect(ADJACENT.B.left).toBe('R')
-    // L: UFL = [U6,F0,L2]——L2 是 L 的右上角面片，邻 U(上)/F(右)
+    // L：up=U via L2∈UFL[U6,F0,L2] + L0∈ULB[U0,L0,B2]；down=D via L8∈DLF[D0,L8,F6] + L6∈DBL[D6,B8,L6]
     expect(ADJACENT.L.up).toBe('U')
     expect(ADJACENT.L.right).toBe('F')
-    // R: URF = [U8,R0,F2]——R0 是 R 的左上角面片，邻 U(上)/F(左)；UBR 的 R2 邻 B(右)
+    expect(ADJACENT.L.down).toBe('D')
+    expect(ADJACENT.L.left).toBe('B')
+    // R：up=U via R2∈UBR[U2,B0,R2] + R0∈URF[U8,R0,F2]；down=D via R8∈DRB[D8,R8,B6] + R6∈DFR[D2,F8,R6]
     expect(ADJACENT.R.up).toBe('U')
-    expect(ADJACENT.R.left).toBe('F')
     expect(ADJACENT.R.right).toBe('B')
+    expect(ADJACENT.R.down).toBe('D')
+    expect(ADJACENT.R.left).toBe('F')
   })
 })
