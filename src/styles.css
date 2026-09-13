@@ -508,5 +508,6 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .scan-cell { aspect-ratio: 1; border-radius: 8px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }
 .scan-cell.low { border-color: #ff5252; }
 .scan-warn { background: #4a3b12; color: #ffd54f; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+.scan-frame { width: 100%; border-radius: 8px; }
 .scan-fix { display: flex; gap: 8px; justify-content: center; }
 .scan-fix .chip { width: 36px; height: 36px; }

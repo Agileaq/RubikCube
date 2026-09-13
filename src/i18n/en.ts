@@ -133,6 +133,7 @@ export const en: Dict = {
     centerMismatch: 'Center reads {x}, this face should be {f} — check the orientation',
     cameraDenied: 'Camera unavailable, use image upload instead',
     notRecognized: 'No full 3×3 grid found. Face the camera squarely with even lighting and retry',
+    foundCount: '{n} cells detected',
   },
   update: {
     newVersion: 'New version available',

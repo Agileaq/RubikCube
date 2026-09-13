@@ -66,17 +66,19 @@ describe('ScannerOverlay', () => {
   })
 
   it('failed detection shows guidance and retake', async () => {
-    scanFace.mockReturnValue({ ok: false, reason: 'blobs' })
+    scanFace.mockReturnValue({ ok: false, reason: 'blobs', found: 4 })
     mount()
     const input = await screen.findByTestId('scan-file')
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
     await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
     await waitFor(() => expect(screen.getByTestId('scan-error')).toBeTruthy())
     expect(screen.getByTestId('scan-retake')).toBeTruthy()
+    expect(screen.getByTestId('scan-frame')).toBeTruthy()
+    expect(screen.getByText('识别到 4 格')).toBeTruthy()
   })
 
   it('retake keeps the live video element mounted (black-screen regression)', async () => {
-    scanFace.mockReturnValue({ ok: false, reason: 'blobs' })
+    scanFace.mockReturnValue({ ok: false, reason: 'blobs', found: 8 })
     mount()
     const input = await screen.findByTestId('scan-file')
     Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })

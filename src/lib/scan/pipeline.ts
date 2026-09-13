@@ -8,7 +8,8 @@ import { classifyPatch } from './classify'
 export interface ScanCell { color: Color; confidence: number; low: boolean }
 export type ScanResult =
   | { ok: true; cells: ScanCell[][]; center: Color }
-  | { ok: false; reason: 'blobs' | 'grid' }
+  | { ok: false; reason: 'blobs'; found: number }
+  | { ok: false; reason: 'grid' }
 
 // 取 blob 外接框内圈 40% 区域的像素（边缘 30% 裁掉，规避格间渗色）。
 function patchPixels(img: ImageData, b: Blob): Rgb[] {

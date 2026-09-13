@@ -57,6 +57,7 @@ export const zh: Dict = {
     centerMismatch: '中心是 {x}，当前面应为 {f}，请确认方向',
     cameraDenied: '无法访问相机，请改用上传图片',
     notRecognized: '未识别到完整 3×3，请正对单面、光线均匀后重试',
+    foundCount: '识别到 {n} 格',
   },
   update: {
     newVersion: '发现新版本',

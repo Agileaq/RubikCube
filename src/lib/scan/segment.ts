@@ -6,18 +6,19 @@ export interface Blob {
 }
 export type DetectResult =
   | { ok: true; blobs: Blob[] }
-  | { ok: false; reason: 'blobs' }
+  | { ok: false; reason: 'blobs'; found: number }
 
 // 分割参数（可调）：贴纸 = 饱和彩色块 或 亮块（白贴纸）；其余交给面积/形状过滤。
 export const SEG = {
-  S_MIN: 0.25,       // 饱和下限（彩色贴纸）
+  S_MIN: 0.32,       // 饱和下限（彩色贴纸；皮肤 s≈0.3–0.5 是真机主要背景干扰）
   V_MIN: 0.2,        // 明度下限（过滤阴影）
-  V_BRIGHT: 0.72,    // 亮块下限（白贴纸）
+  S_BRIGHT_MAX: 0.2, // 亮块饱和上限（白贴纸；低饱和偏亮背景交给面积过滤）
+  V_BRIGHT: 0.55,    // 亮块明度下限（暗光下的白贴纸也要能掩膜）
   DENOISE_MIN: 5,    // 3×3 去噪窗口内最少 mask 像素数（含自身）
   MIN_AREA: 16,      // 连通域最小像素数
-  AREA_LOG_SPAN: 0.7,// 相对中位面积的对数容差
-  ASPECT_LO: 0.55,   // 外接框长宽比下限
-  ASPECT_HI: 1.8,    // 外接框长宽比上限
+  AREA_LOG_SPAN: 0.9,// 相对中位面积的对数容差（真实照片贴纸面积差异更大）
+  ASPECT_LO: 0.5,    // 外接框长宽比下限（真机透视倾斜）
+  ASPECT_HI: 2.0,    // 外接框长宽比上限
 }
 
 export function detectBlobs(img: ImageData): DetectResult {
@@ -26,7 +27,7 @@ export function detectBlobs(img: ImageData): DetectResult {
   const mask = new Uint8Array(w * h)
   for (let i = 0, j = 0; i < mask.length; i++, j += 4) {
     const { s, v } = rgbToHsv({ r: data[j], g: data[j + 1], b: data[j + 2] } as Rgb)
-    mask[i] = ((s > SEG.S_MIN && v > SEG.V_MIN) || v > SEG.V_BRIGHT) ? 1 : 0
+    mask[i] = ((s > SEG.S_MIN && v > SEG.V_MIN) || (s < SEG.S_BRIGHT_MAX && v > SEG.V_BRIGHT)) ? 1 : 0
   }
   // 2. 3×3 中值去噪
   const den = new Uint8Array(w * h)
@@ -62,11 +63,11 @@ export function detectBlobs(img: ImageData): DetectResult {
     if (aspect < SEG.ASPECT_LO || aspect > SEG.ASPECT_HI) continue
     blobs.push({ cx: sx / area, cy: sy / area, area, minX, minY, maxX, maxY })
   }
-  if (blobs.length === 0) return { ok: false, reason: 'blobs' }
+  if (blobs.length === 0) return { ok: false, reason: 'blobs', found: 0 }
   // 4. 相对中位面积的过滤（皮肤/背景大块或碎片被剔除）
   const areas = blobs.map(b => b.area).sort((a, b) => a - b)
   const med = areas[areas.length >> 1]
   const kept = blobs.filter(b => Math.abs(Math.log(b.area / med)) < SEG.AREA_LOG_SPAN)
-  if (kept.length !== 9) return { ok: false, reason: 'blobs' }
+  if (kept.length !== 9) return { ok: false, reason: 'blobs', found: kept.length }
   return { ok: true, blobs: kept }
 }

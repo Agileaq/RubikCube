@@ -42,7 +42,7 @@ describe('detectBlobs', () => {
   it('fails when a sticker is missing', () => {
     const r = detectBlobs(makeGridImage(FACE, { drop: 4 }))
     expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.reason).toBe('blobs')
+    if (!r.ok) { expect(r.reason).toBe('blobs'); expect(r.found).toBe(8) }
   })
   it('blob centroids are near their lattice positions', () => {
     const size = 192

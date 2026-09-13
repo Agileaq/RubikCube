@@ -31,9 +31,11 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   const streamRef = useRef<MediaStream | null>(null)
   const [cameraDenied, setCameraDenied] = useState(false)
   const [result, setResult] = useState<ScanResult | null>(null)
+  const [captured, setCaptured] = useState<ImageData | null>(null)
   const [rot, setRot] = useState(0)
   const [fixing, setFixing] = useState<number | null>(null)
   const [overrides, setOverrides] = useState<(Color | undefined)[][]>(emptyOverrides)
+  const frameRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     let dead = false
@@ -51,6 +53,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   }, [])
 
   const runScan = useCallback((img: ImageData) => {
+    setCaptured(img)
     setResult(scanFace(img))
     setRot(0); setFixing(null); setOverrides(emptyOverrides())
   }, [])
@@ -61,8 +64,15 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   }
   // 解码失败同样走“未识别”引导 + 重拍路径，不再静默吞掉
   const onFile = (f: File | undefined) => {
-    if (f) imageDataFromFile(f).then(runScan).catch(() => setResult({ ok: false, reason: 'blobs' }))
+    if (f) imageDataFromFile(f).then(runScan).catch(() => setResult({ ok: false, reason: 'blobs', found: 0 }))
   }
+
+  // 失败页展示抓拍原图（putImageData 回放）；jsdom 无 2D 上下文，安全跳过
+  useEffect(() => {
+    if (!(result && !result.ok) || !captured) return
+    const ctx = frameRef.current?.getContext('2d')
+    ctx?.putImageData(captured, 0, 0)
+  }, [result, captured])
 
   const cells: (ScanCell | null)[][] = result?.ok
     ? Array.from({ length: rot }, () => 0).reduce<ScanCell[][]>(g => rot90(g), result.cells)
@@ -115,6 +125,11 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
         )}        {result && !result.ok && (
           <div>
             <p className="scan-warn" data-testid="scan-error">{t.scan.notRecognized}</p>
+            {result.reason === 'blobs' && (
+              <p className="scan-warn">{t.scan.foundCount.replace('{n}', String(result.found))}</p>
+            )}
+            <canvas className="scan-frame" data-testid="scan-frame" ref={frameRef}
+              width={captured?.width ?? 1} height={captured?.height ?? 1} />
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-retake" onClick={() => setResult(null)}>{t.scan.retake}</button>
             </div>

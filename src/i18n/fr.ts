@@ -133,6 +133,7 @@ export const fr: Dict = {
     centerMismatch: 'Le centre indique {x}, cette face devrait être {f} — vérifiez l\u2019orientation',
     cameraDenied: 'Caméra indisponible, utilisez le téléversement d\u2019image',
     notRecognized: 'Grille 3×3 incomplète. Visez bien une face, avec un éclairage uniforme, puis réessayez',
+    foundCount: '{n} cellules détectées',
   },
   update: {
     newVersion: 'Nouvelle version disponible',

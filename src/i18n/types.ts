@@ -53,6 +53,7 @@ export interface Dict {
     centerMismatch: string // {x}=seen center color name, {f}=expected face color name
     cameraDenied: string
     notRecognized: string
+    foundCount: string // template with {n}, shown with the captured frame on the failure screen
   }
   update: {
     newVersion: string
