@@ -14,6 +14,13 @@ function rot90<T>(g: T[][]): T[][] {
   return [0, 1, 2].map(c => [0, 1, 2].map(r => g[2 - r][c]))
 }
 
+// 修正色存成与“显示网格”平行的 3×3（undefined = 未修正），旋转时随网格一起转
+const emptyOverrides = (): (Color | undefined)[][] => [
+  [undefined, undefined, undefined],
+  [undefined, undefined, undefined],
+  [undefined, undefined, undefined],
+]
+
 export function ScannerOverlay({ face, onConfirm, onClose }: {
   face: Face
   onConfirm(colors: (Color | null)[]): void
@@ -26,7 +33,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
   const [result, setResult] = useState<ScanResult | null>(null)
   const [rot, setRot] = useState(0)
   const [fixing, setFixing] = useState<number | null>(null)
-  const [overrides, setOverrides] = useState<Record<number, Color>>({})
+  const [overrides, setOverrides] = useState<(Color | undefined)[][]>(emptyOverrides)
 
   useEffect(() => {
     let dead = false
@@ -45,14 +52,17 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
 
   const runScan = useCallback((img: ImageData) => {
     setResult(scanFace(img))
-    setRot(0); setFixing(null); setOverrides({})
+    setRot(0); setFixing(null); setOverrides(emptyOverrides())
   }, [])
 
   const onCapture = () => {
     const v = videoRef.current
     if (v && v.videoWidth > 0) runScan(grabVideoFrame(v))
   }
-  const onFile = (f: File | undefined) => { if (f) imageDataFromFile(f).then(runScan).catch(() => {}) }
+  // 解码失败同样走“未识别”引导 + 重拍路径，不再静默吞掉
+  const onFile = (f: File | undefined) => {
+    if (f) imageDataFromFile(f).then(runScan).catch(() => setResult({ ok: false, reason: 'blobs' }))
+  }
 
   const cells: (ScanCell | null)[][] = result?.ok
     ? Array.from({ length: rot }, () => 0).reduce<ScanCell[][]>(g => rot90(g), result.cells)
@@ -66,11 +76,21 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
 
   const confirm = () => {
     if (!complete) return
-    onConfirm(flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color)))
+    const ov = overrides.flat() // 与显示 flat 同序（overrides 随网格旋转）
+    onConfirm(flat.map((c, i) => (i === 4 ? null : ov[i] ?? c!.color)))
   }
 
+  // 上传控件只定义一次；相机可用/被拒两种状态下都只渲染这一个 scan-file 输入
+  const uploadControl = (
+    <label className="solve-link">
+      {t.scan.upload}
+      <input type="file" accept="image/*" data-testid="scan-file" hidden
+        onChange={e => onFile(e.target.files?.[0])} />
+    </label>
+  )
+
   return (
-    <div className="scanner-overlay" role="dialog">
+    <div className="scanner-overlay" role="dialog" aria-modal="true">
       <div className="scanner-panel">
         <h2>{t.scan.title}</h2>
         <button className="scanner-close" aria-label={t.scan.cancel} onClick={onClose}>✕</button>
@@ -82,22 +102,14 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
                 <video ref={videoRef} playsInline muted autoPlay data-testid="scan-video" />
                 <div className="scanner-actions">
                   <button className="solve-link" onClick={onCapture}>{t.scan.capture}</button>
-                  <label className="solve-link">
-                    {t.scan.upload}
-                    <input type="file" accept="image/*" data-testid="scan-file" hidden
-                      onChange={e => onFile(e.target.files?.[0])} />
-                  </label>
+                  {uploadControl}
                 </div>
               </>
             ) : (
               <p className="scan-warn" data-testid="scan-camera-denied">{t.scan.cameraDenied}</p>
             )}
             {cameraDenied && (
-              <label className="solve-link">
-                {t.scan.upload}
-                <input type="file" accept="image/*" data-testid="scan-file" hidden
-                  onChange={e => onFile(e.target.files?.[0])} />
-              </label>
+              <div className="scanner-actions">{uploadControl}</div>
             )}
           </div>
         )}
@@ -121,7 +133,7 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
             <div className="scan-grid" data-testid="scan-grid">
               {cells.map((row, r) => row.map((cell, c) => {
                 const i = r * 3 + c
-                const color = overrides[i] ?? cell?.color ?? null
+                const color = overrides[r]?.[c] ?? cell?.color ?? null
                 return (
                   <button key={i} data-testid={`scan-cell-${i}`}
                     className={'scan-cell' + (cell?.low ? ' low' : '')}
@@ -135,12 +147,17 @@ export function ScannerOverlay({ face, onConfirm, onClose }: {
                 {COLOR_ORDER.map(col => (
                   <button key={col} className="chip" data-color={col}
                     style={{ background: COLOR_HEX[col] }}
-                    onClick={() => { setOverrides(o => ({ ...o, [fixing]: col })); setFixing(null) }} />
+                    onClick={() => {
+                      const r = Math.floor(fixing / 3), c = fixing % 3
+                      setOverrides(o => o.map((row, ri) => (ri === r ? row.map((v, ci) => (ci === c ? col : v)) : row)))
+                      setFixing(null)
+                    }} />
                 ))}
               </div>
             )}
             <div className="scanner-actions">
-              <button className="solve-link" data-testid="scan-rotate" onClick={() => setRot(r => (r + 1) % 4)}>{t.scan.rotate}</button>
+              <button className="solve-link" data-testid="scan-rotate"
+                onClick={() => { setRot(r => (r + 1) % 4); setOverrides(o => rot90(o)) }}>{t.scan.rotate}</button>
               <button className="solve-link" data-testid="scan-retake" onClick={() => setResult(null)}>{t.scan.retake}</button>
               <button className="solve-link" data-testid="scan-confirm" disabled={!complete} onClick={confirm}>{t.scan.confirm}</button>
             </div>

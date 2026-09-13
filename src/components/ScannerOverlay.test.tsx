@@ -87,4 +87,23 @@ describe('ScannerOverlay', () => {
     await act(async () => { screen.getByTestId('scan-rotate').click() })
     expect(screen.getByTestId('scan-cell-0').style.background).not.toBe(before)
   })
+
+  it('color fix follows its sticker through rotation (not the display slot)', async () => {
+    scanFace.mockReturnValue(OK)
+    const { onConfirm } = mount()
+    const input = await screen.findByTestId('scan-file')
+    Object.defineProperty(input, 'files', { value: [new File(['x'], 'c.jpg', { type: 'image/jpeg' })] })
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+    await screen.findByTestId('scan-grid')
+    // 修正显示格 0（原色 W → Y）
+    await act(async () => { screen.getByTestId('scan-cell-0').click() })
+    const fixRow = screen.getByTestId('scan-fix')
+    const chip = fixRow.querySelector('button[data-color="Y"]') as HTMLButtonElement
+    await act(async () => { chip.click() })
+    // 顺时针旋转一次：原 cell-0（带修正 Y）移动到显示槽 2
+    await act(async () => { screen.getByTestId('scan-rotate').click() })
+    await act(async () => { screen.getByTestId('scan-confirm').click() })
+    // 旋转后 flat = [G,R,W, W,B,O, R,Y,G]；槽 2 携带修正色 Y（旧实现会错误地把 Y 留在槽 0）
+    expect(onConfirm).toHaveBeenCalledWith(['G', 'R', 'Y', 'W', null, 'O', 'R', 'Y', 'G'])
+  })
 })
