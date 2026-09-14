@@ -45,7 +45,7 @@ export const zh: Dict = {
     sections: TUTORIAL.map(s => ({ anchor: s.anchor, tab: s.tab, title: s.title, body: s.body })),
   },
   scan: {
-    open: '拍照识别',
+    open: '拍照填色',
     title: '拍照识别色块',
     capture: '拍照',
     upload: '上传图片',

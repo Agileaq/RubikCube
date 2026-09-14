@@ -1,6 +1,9 @@
 import type { Color, Face, CubeState, Orientation } from '../types'
 
 export const FACES: Face[] = ['U', 'D', 'L', 'R', 'F', 'B']
+// 拍色枢纽的槽位顺序（用户指定）：第一排 白/橙/绿（U/L/F，默认视角三面），
+// 第二排 红/蓝/黄（R/B/D）。也用于「下一个待拍面」的自动预选顺序。
+export const SCAN_FACE_ORDER: Face[] = ['U', 'L', 'F', 'R', 'B', 'D']
 export const COLORS: Color[] = ['W', 'R', 'O', 'Y', 'G', 'B']
 
 // Fixed color scheme — standard Western: opposite pairs are White↔Yellow,

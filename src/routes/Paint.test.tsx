@@ -36,7 +36,7 @@ describe('Paint screen', () => {
 
   it('scan button opens the scanner overlay on the pick step', () => {
     renderPaint()
-    act(() => { screen.getByText('拍照识别').click() })
+    act(() => { screen.getByText('拍照填色').click() })
     expect(screen.getByText('选择要拍的面')).toBeInTheDocument()
     for (const f of ['U', 'D', 'L', 'R', 'F', 'B']) {
       expect(screen.getByTestId(`scan-face-${f}`)).toBeInTheDocument()

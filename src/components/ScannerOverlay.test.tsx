@@ -3,7 +3,7 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import { I18nProvider } from '../i18n'   // 与其他组件测试相同的包裹方式
 import { AppProvider } from '../state/AppContext'
 import { useApp } from '../state/useApp'
-import { FACES } from '../lib/cube'
+import { FACES, SCAN_FACE_ORDER } from '../lib/cube'
 import { COLOR_HEX } from '../lib/colors'
 import type { Color, Face } from '../types'
 import type { ScanResult } from '../lib/scan/pipeline'
@@ -108,8 +108,12 @@ describe('ScannerOverlay', () => {
     expect(await screen.findByText('选择要拍的面')).toBeTruthy()
     for (const f of FACES) expect(screen.getByTestId(`scan-face-${f}`)).toBeTruthy()
     expect((screen.getByTestId('scan-confirm-all') as HTMLButtonElement).disabled).toBe(true)
-    // FACES 序第一个未填满的面（空仓 → U）自动预选
+    // 拍色顺序（SCAN_FACE_ORDER）第一个未填满的面（空仓 → U）自动预选
     expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('true')
+    // 槽位顺序：第一排 白/橙/绿（U/L/F），第二排 红/蓝/黄（R/B/D）
+    const chips = screen.getAllByTestId(/^(scan-face-[UDLRFB]|scan-thumb-[UDLRFB])$/)
+    const rendered = chips.map(el => (el as HTMLElement).getAttribute('data-testid')!.replace('scan-thumb-', '').replace('scan-face-', ''))
+    expect(rendered).toEqual([...SCAN_FACE_ORDER])
   })
 
   it('store-complete face shows ✓ and is skipped by auto-select while incomplete faces exist', async () => {
@@ -117,7 +121,8 @@ describe('ScannerOverlay', () => {
     await screen.findByText('选择要拍的面')
     expect(screen.getByTestId('scan-face-done-U')).toBeTruthy()
     expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('false')
-    expect(screen.getByTestId('scan-face-D').getAttribute('aria-pressed')).toBe('true')
+    // U 满 → 拍色顺序下一个是 L（不是 D）
+    expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
   })
 
   it('picking F shows the orientation cross with expected dot colors', async () => {
