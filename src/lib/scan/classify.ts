@@ -35,7 +35,7 @@ export function classifyPatch(samples: Rgb[]): ClassifyResult {
     return !(v > GLARE_V_MIN && s < GLARE_S_MAX)
   })
   const med = medianRgb(px.length > 0 ? px : samples)
-  const { s, v } = rgbToHsv(med)
+  const { h, s, v } = rgbToHsv(med)
   if (s < WHITE_S_MAX && v > WHITE_V_MIN) {
     const confidence = Math.max(0, Math.min(
       (WHITE_S_MAX - s) / WHITE_S_MAX,
@@ -44,11 +44,19 @@ export function classifyPatch(samples: Rgb[]): ClassifyResult {
     return { color: 'W', confidence, low: confidence < LOW_CONFIDENCE }
   }
   const lab = rgbToLab(med)
-  let best: Color = 'W', bestD = Infinity, second = Infinity
+  let best: Color = 'W', bestD = Infinity, second = Infinity, runnerUp: Color = 'W'
   for (const c of Object.keys(REFERENCES) as Color[]) {
     const d = deltaE94(lab, REFERENCES[c])
-    if (d < bestD) { second = bestD; best = c; bestD = d }
-    else if (d < second) second = d
+    if (d < bestD) { second = bestD; runnerUp = best; best = c; bestD = d }
+    else if (d < second) { second = d; runnerUp = c }
+  }
+  // 真机加固 #2：暖光/暗光下橙的 ΔE94 会反超红（参考橙偏亮黄、参考红偏暗红）。
+  // 色相始终稳定分离（红 ≈350–358°，橙 ≈16–33°），故 R/O 互为前二候选时按色相裁决。
+  // 注意色相是环形值：红在 0/360 附近，不能只判“h ≥ 阈值”。
+  const R_O_HUE_MIN = 8
+  const R_O_HUE_MAX = 45
+  if ((best === 'R' && runnerUp === 'O') || (best === 'O' && runnerUp === 'R')) {
+    best = h >= R_O_HUE_MIN && h <= R_O_HUE_MAX ? 'O' : 'R'
   }
   const confidence = Math.max(0, Math.min(1, (second - bestD) / 12))
   return { color: best, confidence, low: confidence < LOW_CONFIDENCE }

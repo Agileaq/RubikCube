@@ -29,6 +29,16 @@ describe('classifyPatch', () => {
     expect(['R', 'O']).toContain(r.color)
     expect(r.low).toBe(true)
   })
+  it('warm/dim indoor orange (ΔE94 flips it to R) stays O via hue tie-break', () => {
+    expect(classifyPatch(many({ r: 225, g: 85, b: 25 })).color).toBe('O')
+    expect(classifyPatch(many({ r: 220, g: 80, b: 20 })).color).toBe('O')
+    expect(classifyPatch(many({ r: 200, g: 75, b: 20 })).color).toBe('O')
+    expect(classifyPatch(many({ r: 190, g: 70, b: 20 })).color).toBe('O')
+  })
+  it('warm-cast reds stay R under the same tie-break', () => {
+    expect(classifyPatch(many({ r: 205, g: 45, b: 55 })).color).toBe('R')
+    expect(classifyPatch(many({ r: 160, g: 25, b: 45 })).color).toBe('R')
+  })
   it('glare pixels (V>0.97 & S<0.1) are excluded before classification', () => {
     const red = many({ r: 196, g: 30, b: 58 }, 30)
     const glare = many({ r: 255, g: 255, b: 255 }, 34)
