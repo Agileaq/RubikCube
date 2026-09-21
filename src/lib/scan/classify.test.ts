@@ -39,6 +39,13 @@ describe('classifyPatch', () => {
     expect(classifyPatch(many({ r: 205, g: 45, b: 55 })).color).toBe('R')
     expect(classifyPatch(many({ r: 160, g: 25, b: 45 })).color).toBe('R')
   })
+  // 真机回归（IMG_7440.HEIC，WebKit 解码/iPhone HDR 渲染下贴纸非常鲜艳）：
+  // ΔE94 会把纯饱和绿判成 W（W 25.0 < G 27.2）——参考绿偏暗青，白参考靠“排除法”捡漏。
+  it('vivid stickerless greens stay G (not W by elimination)', () => {
+    expect(classifyPatch(many({ r: 0, g: 233, b: 0 })).color).toBe('G')
+    expect(classifyPatch(many({ r: 0, g: 212, b: 0 })).color).toBe('G')
+    expect(classifyPatch(many({ r: 73, g: 228, b: 62 })).color).toBe('G')
+  })
   it('glare pixels (V>0.97 & S<0.1) are excluded before classification', () => {
     const red = many({ r: 196, g: 30, b: 58 }, 30)
     const glare = many({ r: 255, g: 255, b: 255 }, 34)

@@ -1,5 +1,5 @@
 import type { Color } from '../../types'
-import { COLOR_HEX, hexToRgb, rgbToHsv, rgbToLab, deltaE94, type Rgb } from '../colors'
+import { COLOR_HEX, hexToRgb, rgbToHsv, rgbToLab, deltaE2000, type Rgb } from '../colors'
 
 // 真机加固 #1：暖光下白/黄仅靠 Lab 距离易混淆，低饱和高亮度先强制判白。
 export const WHITE_S_MAX = 0.18
@@ -43,14 +43,17 @@ export function classifyPatch(samples: Rgb[]): ClassifyResult {
     ))
     return { color: 'W', confidence, low: confidence < LOW_CONFIDENCE }
   }
+  // 真机加固 #3：距离度量用 CIEDE2000。ΔE94 下鲜艳贴纸（iPhone HDR 渲染）会
+  // 被“排除法”判到 W（IMG_7440 纯绿 (0,233,0)：W 25.0 < G 27.2）；ΔE2000 按
+  // 感知排序为 G 24.0 < Y 32.0 < W 33.5，恢复正常。
   const lab = rgbToLab(med)
   let best: Color = 'W', bestD = Infinity, second = Infinity, runnerUp: Color = 'W'
   for (const c of Object.keys(REFERENCES) as Color[]) {
-    const d = deltaE94(lab, REFERENCES[c])
+    const d = deltaE2000(lab, REFERENCES[c])
     if (d < bestD) { second = bestD; runnerUp = best; best = c; bestD = d }
     else if (d < second) { second = d; runnerUp = c }
   }
-  // 真机加固 #2：暖光/暗光下橙的 ΔE94 会反超红（参考橙偏亮黄、参考红偏暗红）。
+  // 真机加固 #2：暖光/暗光下橙的 ΔE 会反超红（参考橙偏亮黄、参考红偏暗红）。
   // 色相始终稳定分离（红 ≈350–358°，橙 ≈16–33°），故 R/O 互为前二候选时按色相裁决。
   // 注意色相是环形值：红在 0/360 附近，不能只判“h ≥ 阈值”。
   const R_O_HUE_MIN = 8
