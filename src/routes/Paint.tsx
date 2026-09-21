@@ -8,7 +8,6 @@ import { FlipButton } from '../components/FlipButton'
 import { BuildInfo } from '../components/BuildInfo'
 import { LocaleSwitcher } from '../components/LocaleSwitcher'
 import { ScannerOverlay } from '../components/ScannerOverlay'
-import { FACES } from '../lib/cube'
 
 // 扫描取景框图标（拍照填色按钮左侧）
 function ScanIcon() {
@@ -30,18 +29,6 @@ export default function Paint() {
   const { cube, orientation, brush, remaining, paintSticker, setBrush, flip, reset, full, validation } = useApp()
   const { t } = useI18n()
   const [scanning, setScanning] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  // 调试导出：整仓一行编码 "U:WWWWWWWWW|D:...|..."；不可解时附校验器的具体原因
-  // （重复/缺失块、角块不可能、扭转/翻棱/奇偶），便于把失败状态原样发出去定位。
-  function exportState() {
-    const code = FACES.map(f => `${f}:${cube[f].map(x => x ?? '_').join('')}`).join('|')
-    const detail = validation?.solvable === false && validation.detail ? `\n---\n${validation.detail}` : ''
-    navigator.clipboard?.writeText(code + detail).then(
-      () => { setCopied(true); setTimeout(() => setCopied(false), 2000) },
-      () => { /* clipboard unavailable */ },
-    )
-  }
 
   return (
     <div className="app paint">
@@ -73,11 +60,6 @@ export default function Paint() {
 
       {full && validation && !validation.solvable && (
         <p className="unsolvable">{t.paint.unsolvable}</p>
-      )}
-      {full && (
-        <button className="reset-btn" onClick={exportState}>
-          {copied ? t.paint.copied : t.paint.export}
-        </button>
       )}
       {full && validation?.solvable && (
         <div className="solve-links">
