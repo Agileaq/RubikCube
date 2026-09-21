@@ -535,9 +535,10 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .face-chip { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }
 .face-chip.active { border-color: #fff; }
-.face-chip .face-done { position: absolute; top: 2px; right: 6px; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,.9); }
+.face-chip .face-done, .face-thumb .face-done { position: absolute; top: 2px; right: 6px; font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 0 4px rgba(0,0,0,.9); }
 /* 修订 3：暂存批次流——枢纽里已暂存的面显示迷你 3×3 缩略图（居中于槽位，点按重拍） */
 .face-thumb {
+  position: relative;
   width: 54px; height: 54px;
   justify-self: center; align-self: center;
   display: grid;

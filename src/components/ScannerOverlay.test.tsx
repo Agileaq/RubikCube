@@ -52,18 +52,21 @@ function Probe() {
   )
 }
 
-// 预置 rc.paint（与 lib/storage 的结构一致）：done 里的面按中心色填满
+// 预置 rc.paint（与 lib/storage 的结构一致）：done 里的面按中心色填满；
+// partial 指定面的指定格预填颜色（其余非中心格留空）
 const CENTER_COLOR: Record<Face, Color> = { U: 'W', D: 'Y', L: 'O', R: 'R', F: 'G', B: 'B' }
-function seedStore(done: Face[]) {
+function seedStore(done: Face[], partial: Partial<Record<Face, Record<number, Color>>> = {}) {
   const cube = Object.fromEntries(FACES.map(f => [
     f,
-    Array.from({ length: 9 }, (_, i) => (i === 4 || done.includes(f) ? CENTER_COLOR[f] : null)),
+    Array.from({ length: 9 }, (_, i) => (
+      i === 4 || done.includes(f) ? CENTER_COLOR[f] : partial[f]?.[i] ?? null
+    )),
   ]))
   localStorage.setItem('rc.paint', JSON.stringify(cube))
 }
 
-function mount(opts: { seedU?: boolean; onClose?: () => void } = {}) {
-  seedStore(opts.seedU ? ['U'] : [])
+function mount(opts: { seedU?: boolean; partial?: Partial<Record<Face, Record<number, Color>>>; onClose?: () => void } = {}) {
+  seedStore(opts.seedU ? ['U'] : [], opts.partial)
   render(
     <I18nProvider>
       <AppProvider>
@@ -119,10 +122,28 @@ describe('ScannerOverlay', () => {
   it('store-complete face shows ✓ and is skipped by auto-select while incomplete faces exist', async () => {
     mount({ seedU: true })
     await screen.findByText('选择要拍的面')
+    // U 已填满 → 显示迷你缩略图 + ✓（不再是纯色 chip）
     expect(screen.getByTestId('scan-face-done-U')).toBeTruthy()
-    expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('scan-thumb-U')).toBeTruthy()
+    expect(screen.getByTestId('scan-thumb-U').getAttribute('aria-pressed')).toBe('false')
     // U 满 → 拍色顺序下一个是 L（不是 D）
     expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('partially filled face shows its stored colors in the hub (nulls fall back to center color)', async () => {
+    mount({ partial: { F: { 0: 'R', 8: 'B' } } })
+    await screen.findByText('选择要拍的面')
+    // F 已有格子填色 → 显示迷你缩略图，不再是无色 chip
+    expect(screen.queryByTestId('scan-face-F')).toBeNull()
+    const thumb = screen.getByTestId('scan-thumb-F')
+    const cells = thumb.querySelectorAll('i')
+    expect((cells[0] as HTMLElement).style.background).toBe(rgbOf(COLOR_HEX.R))
+    expect((cells[1] as HTMLElement).style.background).toBe(rgbOf(COLOR_HEX.G))
+    expect((cells[8] as HTMLElement).style.background).toBe(rgbOf(COLOR_HEX.B))
+    // 未填满 → 无 ✓；点按仍可进入拍照
+    expect(screen.queryByTestId('scan-face-done-F')).toBeNull()
+    await act(async () => { thumb.click() })
+    expect(await screen.findByText('上传图片')).toBeTruthy()
   })
 
   it('picking F shows the orientation cross with expected dot colors', async () => {

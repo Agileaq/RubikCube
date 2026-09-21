@@ -156,16 +156,22 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
             <div className="pick-grid">
               {SCAN_FACE_ORDER.map(f => {
                 const st = staged[f]
-                if (st) {
-                  // 已暂存：迷你 3×3 缩略图（空中心格显示该面中心色），点按重拍，再次加入即覆盖
+                const done = faceDone(cube, f)
+                // 已暂存：迷你 3×3 缩略图（空中心格显示该面中心色），点按重拍，再次加入即覆盖。
+                // 未暂存但 store 里已填过任意格子：同样显示已填的色（空格回退为中心色），随点随改。
+                const shown = st ?? (cube[f].some((x, i) => i !== 4 && x !== null) ? cube[f] : null)
+                if (shown) {
                   return (
                     <button key={f} data-testid={`scan-thumb-${f}`} aria-label={f}
                       aria-pressed={f === face}
                       className={'face-thumb' + (f === face ? ' active' : '')}
                       onClick={() => { selectFace(f); setStep('scan') }}>
-                      {st.map((c, i) => (
+                      {shown.map((c, i) => (
                         <i key={i} style={{ background: COLOR_HEX[c ?? CENTERS[f]] }} />
                       ))}
+                      {done && (
+                        <span className="face-done" data-testid={`scan-face-done-${f}`}>✓</span>
+                      )}
                     </button>
                   )
                 }
@@ -175,7 +181,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
                     className={'face-chip' + (f === face ? ' active' : '')}
                     style={{ background: COLOR_HEX[CENTERS[f]] }}
                     onClick={() => { selectFace(f); setStep('scan') }}>
-                    {faceDone(cube, f) && (
+                    {done && (
                       <span className="face-done" data-testid={`scan-face-done-${f}`}>✓</span>
                     )}
                   </button>
