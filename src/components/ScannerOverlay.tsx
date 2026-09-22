@@ -236,7 +236,9 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
                 const color = overrides[i] ?? cell?.color ?? null
                 return (
                   <button key={i} data-testid={`scan-cell-${i}`}
-                    className={'scan-cell' + (cell?.low ? ' low' : '')}
+                    className={'scan-cell'
+                      + (cell?.low && overrides[i] === undefined ? ' low' : '')
+                      + (fixing === i ? ' active' : '')}
                     style={{ background: color ? COLOR_HEX[color] : 'transparent' }}
                     disabled={i === 4}
                     onClick={i === 4 ? undefined : () => setFixing(i)} />

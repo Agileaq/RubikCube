@@ -37,6 +37,12 @@ const OK_D = asResult(['Y', 'G', 'O', 'R', 'Y', 'B', 'W', 'G', 'R'], 'Y')
 const OK_L = asResult(['O', 'G', 'W', 'B', 'O', 'R', 'Y', 'O', 'G'], 'O')
 // 重扫 D 的另一组结果（与 OK_D 多数格不同，用于断言暂存被覆盖）
 const AGAIN_D = asResult(['R', 'R', 'R', 'G', 'Y', 'G', 'W', 'W', 'W'], 'Y')
+// 0 号格低置信（红框警示），人工改色后应清除
+const LOW_U = (() => {
+  const r = asResult(['W', 'O', 'G', 'R', 'W', 'Y', 'G', 'W', 'R'], 'W')
+  r.cells[0][0] = { color: 'W', confidence: 0.1, low: true }
+  return r
+})()
 
 // 探针：把每面 8 个非中心格暴露成 data-testid="probe-<F>"（'-' 表示空）
 function Probe() {
@@ -286,5 +292,22 @@ describe('ScannerOverlay', () => {
     expect(thumbCell('U', 0)).toBe(rgbOf(COLOR_HEX.Y))
     await act(async () => { screen.getByTestId('scan-confirm-all').click() })
     expect(screen.getByTestId('probe-U').textContent).toBe('YOGRYGWR')
+  })
+
+  it('clicked cell shows active highlight; manual fix clears the low-confidence border', async () => {
+    scanFace.mockReturnValue(LOW_U)
+    mount()
+    await screen.findByText('选择要拍的面')
+    pickFace('U')
+    await upload()
+    const cell0 = await screen.findByTestId('scan-cell-0')
+    expect(cell0.className).toContain('low')
+    await act(async () => { cell0.click() })
+    expect(screen.getByTestId('scan-cell-0').className).toContain('active')
+    const chip = screen.getByTestId('scan-fix').querySelector('button[data-color="Y"]') as HTMLButtonElement
+    await act(async () => { chip.click() })
+    const after = screen.getByTestId('scan-cell-0')
+    expect(after.className).not.toContain('low')
+    expect(after.className).not.toContain('active')
   })
 })

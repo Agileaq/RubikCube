@@ -528,6 +528,8 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .scan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
 .scan-cell { aspect-ratio: 1; border-radius: 8px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }
 .scan-cell.low { border-color: #ff5252; }
+/* 点击进入修正的格子高亮（白环）；人工改色后 low 红框消失 */
+.scan-cell.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
 .scan-warn { background: #4a3b12; color: #ffd54f; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 /* 取景/失败/核对三块的内部纵向间距：此前子元素直接贴在一起（十字、色圆、按钮） */
 .scanner-live, .scan-stack { display: flex; flex-direction: column; gap: 14px; }
