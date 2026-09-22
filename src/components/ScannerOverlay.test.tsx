@@ -106,17 +106,28 @@ beforeEach(() => {
 })
 
 describe('ScannerOverlay', () => {
-  it('hub with nothing staged: 6 chips, confirm-all disabled, first incomplete auto-selected', async () => {
+  it('hub with nothing staged: 6 chips, confirm-all enabled, first incomplete auto-selected', async () => {
     mount()
     expect(await screen.findByText('选择要拍的面')).toBeTruthy()
     for (const f of FACES) expect(screen.getByTestId(`scan-face-${f}`)).toBeTruthy()
-    expect((screen.getByTestId('scan-confirm-all') as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByTestId('scan-confirm-all') as HTMLButtonElement).disabled).toBe(false)
     // 拍色顺序（SCAN_FACE_ORDER）第一个未填满的面（空仓 → U）自动预选
     expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('true')
     // 槽位顺序：第一排 白/橙/绿（U/L/F），第二排 红/蓝/黄（R/B/D）
     const chips = screen.getAllByTestId(/^(scan-face-[UDLRFB]|scan-thumb-[UDLRFB])$/)
     const rendered = chips.map(el => (el as HTMLElement).getAttribute('data-testid')!.replace('scan-thumb-', '').replace('scan-face-', ''))
     expect(rendered).toEqual([...SCAN_FACE_ORDER])
+  })
+
+  it('confirm-all is always pressable: with nothing staged it closes without touching the store', async () => {
+    const onClose = vi.fn()
+    mount({ partial: { F: { 0: 'R', 8: 'B' } }, onClose })
+    await screen.findByText('选择要拍的面')
+    const btn = screen.getByTestId('scan-confirm-all') as HTMLButtonElement
+    expect(btn.disabled).toBe(false)
+    await act(async () => { btn.click() })
+    expect(onClose).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('probe-F').textContent).toBe('R------B')
   })
 
   it('store-complete face shows ✓ and is skipped by auto-select while incomplete faces exist', async () => {

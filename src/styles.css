@@ -529,8 +529,16 @@ body { margin: 0; font-family: -apple-system, system-ui, sans-serif; }
 .scan-cell { aspect-ratio: 1; border-radius: 8px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }
 .scan-cell.low { border-color: #ff5252; }
 .scan-warn { background: #4a3b12; color: #ffd54f; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
-.scan-fix { display: flex; gap: 8px; justify-content: center; }
-.scan-fix .chip { width: 36px; height: 36px; }
+/* 取景/失败/核对三块的内部纵向间距：此前子元素直接贴在一起（十字、色圆、按钮） */
+.scanner-live, .scan-stack { display: flex; flex-direction: column; gap: 14px; }
+/* 修正色圆：白环 + 投影让它看起来是可点的按钮（暗底上纯色圆对比不足），按下有回弹 */
+.scan-fix { display: flex; gap: 10px; justify-content: center; }
+.scan-fix .chip {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(255,255,255,.95);
+  box-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+.scan-fix .chip:active { transform: scale(.92); }
 /* 修订 2：选面步（6 面圆片）+ 方位提示十字（纯视觉，无文字） */
 .pick-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .face-chip { position: relative; aspect-ratio: 1; border-radius: 10px; border: 2px solid rgba(255,255,255,.25); cursor: pointer; }

@@ -190,7 +190,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
             </div>
             <div className="scanner-actions">
               <button className="solve-link scan-confirm-all" data-testid="scan-confirm-all"
-                disabled={Object.keys(staged).length === 0} onClick={confirmAll}>
+                onClick={confirmAll}>
                 {t.scan.confirm}
               </button>
             </div>
@@ -214,7 +214,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
           </div>
         )}
         {step === 'scan' && !result && decodeFailed && (
-          <div>
+          <div className="scan-stack">
             <p className="scan-warn" data-testid="scan-error">{t.scan.notRecognized}</p>
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-retake" onClick={retake}>{t.scan.retake}</button>
@@ -222,7 +222,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
           </div>
         )}
         {step === 'scan' && result && (
-          <div>
+          <div className="scan-stack">
             {mismatch && (
               <p className="scan-warn" data-testid="scan-warn">
                 {t.scan.centerMismatch
@@ -247,7 +247,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
             {fixing !== null && (
               <div className="scan-fix" data-testid="scan-fix">
                 {COLOR_ORDER.map(col => (
-                  <button key={col} className="chip" data-color={col}
+                  <button key={col} className="chip" data-color={col} aria-label={name(col)}
                     style={{ background: COLOR_HEX[col] }}
                     onClick={() => {
                       setOverrides(o => ({ ...o, [fixing]: col }))
