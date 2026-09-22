@@ -53,7 +53,8 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
   const [staged, setStaged] = useState<Staged>({})
   const [result, setResult] = useState<ScanResult | null>(null)
   const [decodeFailed, setDecodeFailed] = useState(false)
-  const [fixing, setFixing] = useState<number | null>(null)
+  // 修正笔刷：与填色页一致——先点色圆选色，再点色块改色；未选色时点色块无动作
+  const [brush, setBrush] = useState<Color | null>(null)
   // 修正色按显示格下标平铺存储（修订 2：旋转已移除，显示序即写入序）
   const [overrides, setOverrides] = useState<Record<number, Color>>({})
 
@@ -74,7 +75,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
 
   const runScan = useCallback((img: ImageData) => {
     setResult(scanFace(img))
-    setFixing(null); setOverrides({})
+    setBrush(null); setOverrides({})
   }, [])
 
   const onCapture = () => {
@@ -102,7 +103,7 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
     next[face] = flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color))
     setStaged(next)
     selectFace(nextPick(cube, next, face))
-    setResult(null); setFixing(null); setOverrides({})
+    setResult(null); setBrush(null); setOverrides({})
     setStep('pick')
   }
 
@@ -236,28 +237,24 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
                 const color = overrides[i] ?? cell?.color ?? null
                 return (
                   <button key={i} data-testid={`scan-cell-${i}`}
-                    className={'scan-cell'
-                      + (cell?.low && overrides[i] === undefined ? ' low' : '')
-                      + (fixing === i ? ' active' : '')}
+                    className={'scan-cell' + (cell?.low && overrides[i] === undefined ? ' low' : '')}
                     style={{ background: color ? COLOR_HEX[color] : 'transparent' }}
                     disabled={i === 4}
-                    onClick={i === 4 ? undefined : () => setFixing(i)} />
+                    onClick={i === 4 || brush === null ? undefined : () => {
+                      const b = brush
+                      setOverrides(o => ({ ...o, [i]: b }))
+                    }} />
                 )
               }))}
             </div>
             <OrientationCross face={face} />
-            {/* 色圆常驻：避免点选色块时下方内容出现/消失造成页面抖动；
-                未选中色块时点按不做任何修改 */}
+            {/* 色圆常驻（避免抖动）：先选色（active 高亮）再点色块改色，与填色页一致 */}
             <div className="scan-fix" data-testid="scan-fix">
               {COLOR_ORDER.map(col => (
-                <button key={col} className="chip" data-color={col} aria-label={name(col)}
+                <button key={col} className={'chip' + (brush === col ? ' active' : '')}
+                  data-color={col} aria-label={name(col)}
                   style={{ background: COLOR_HEX[col] }}
-                  onClick={() => {
-                    if (fixing === null) return
-                    const target = fixing
-                    setOverrides(o => ({ ...o, [target]: col }))
-                    setFixing(null)
-                  }} />
+                  onClick={() => setBrush(col)} />
               ))}
             </div>
             <div className="scanner-actions">

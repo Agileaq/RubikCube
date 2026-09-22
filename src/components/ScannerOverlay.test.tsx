@@ -284,17 +284,18 @@ describe('ScannerOverlay', () => {
     pickFace('U')
     await upload()
     await screen.findByTestId('scan-grid')
-    // 修正显示格 0（原色 W → Y）：加入后缩略图 0 号格变 Y，总确认写入同一槽位（显示序即写入序）
-    await act(async () => { screen.getByTestId('scan-cell-0').click() })
+    // 修正显示格 0（原色 W → Y）：先点色圆选 Y，再点格；加入后缩略图 0 号格变 Y，
+    // 总确认写入同一槽位（显示序即写入序）
     const chip = screen.getByTestId('scan-fix').querySelector('button[data-color="Y"]') as HTMLButtonElement
     await act(async () => { chip.click() })
+    await act(async () => { screen.getByTestId('scan-cell-0').click() })
     await act(async () => { screen.getByTestId('scan-stage').click() })
     expect(thumbCell('U', 0)).toBe(rgbOf(COLOR_HEX.Y))
     await act(async () => { screen.getByTestId('scan-confirm-all').click() })
     expect(screen.getByTestId('probe-U').textContent).toBe('YOGRYGWR')
   })
 
-  it('palette is always visible; clicking it with no cell selected changes nothing', async () => {
+  it('palette is always visible; a cell repaints only after a brush color is picked', async () => {
     scanFace.mockReturnValue(OK_U)
     mount()
     await screen.findByText('选择要拍的面')
@@ -302,16 +303,21 @@ describe('ScannerOverlay', () => {
     await upload()
     const palette = await screen.findByTestId('scan-fix')
     expect(palette.querySelectorAll('button')).toHaveLength(6)
-    const before = screen.getByTestId('scan-cell-0').style.background
-    await act(async () => {
-      (palette.querySelector('button[data-color="Y"]') as HTMLButtonElement).click()
-    })
-    expect(screen.getByTestId('scan-cell-0').style.background).toBe(before)
-    await act(async () => { screen.getByTestId('scan-stage').click() })
-    expect(thumbCell('U', 0)).toBe(rgbOf(COLOR_HEX.W))
+    // 未选色时点色块：无动作
+    await act(async () => { screen.getByTestId('scan-cell-0').click() })
+    expect(screen.getByTestId('scan-cell-0').style.background).toBe(rgbOf(COLOR_HEX.W))
+    // 先选色圆（active 高亮），再点色块 → 改色；笔刷保持可连续改
+    const chipY = palette.querySelector('button[data-color="Y"]') as HTMLButtonElement
+    await act(async () => { chipY.click() })
+    expect(chipY.className).toContain('active')
+    expect(screen.getByTestId('scan-cell-0').style.background).toBe(rgbOf(COLOR_HEX.W))
+    await act(async () => { screen.getByTestId('scan-cell-0').click() })
+    await act(async () => { screen.getByTestId('scan-cell-1').click() })
+    expect(screen.getByTestId('scan-cell-0').style.background).toBe(rgbOf(COLOR_HEX.Y))
+    expect(screen.getByTestId('scan-cell-1').style.background).toBe(rgbOf(COLOR_HEX.Y))
   })
 
-  it('clicked cell shows active highlight; manual fix clears the low-confidence border', async () => {
+  it('painting a low-confidence cell with a selected brush clears its red border', async () => {
     scanFace.mockReturnValue(LOW_U)
     mount()
     await screen.findByText('选择要拍的面')
@@ -319,12 +325,11 @@ describe('ScannerOverlay', () => {
     await upload()
     const cell0 = await screen.findByTestId('scan-cell-0')
     expect(cell0.className).toContain('low')
+    const chipB = screen.getByTestId('scan-fix').querySelector('button[data-color="B"]') as HTMLButtonElement
+    await act(async () => { chipB.click() })
     await act(async () => { cell0.click() })
-    expect(screen.getByTestId('scan-cell-0').className).toContain('active')
-    const chip = screen.getByTestId('scan-fix').querySelector('button[data-color="Y"]') as HTMLButtonElement
-    await act(async () => { chip.click() })
     const after = screen.getByTestId('scan-cell-0')
     expect(after.className).not.toContain('low')
-    expect(after.className).not.toContain('active')
+    expect(after.style.background).toBe(rgbOf(COLOR_HEX.B))
   })
 })
