@@ -294,6 +294,23 @@ describe('ScannerOverlay', () => {
     expect(screen.getByTestId('probe-U').textContent).toBe('YOGRYGWR')
   })
 
+  it('palette is always visible; clicking it with no cell selected changes nothing', async () => {
+    scanFace.mockReturnValue(OK_U)
+    mount()
+    await screen.findByText('选择要拍的面')
+    pickFace('U')
+    await upload()
+    const palette = await screen.findByTestId('scan-fix')
+    expect(palette.querySelectorAll('button')).toHaveLength(6)
+    const before = screen.getByTestId('scan-cell-0').style.background
+    await act(async () => {
+      (palette.querySelector('button[data-color="Y"]') as HTMLButtonElement).click()
+    })
+    expect(screen.getByTestId('scan-cell-0').style.background).toBe(before)
+    await act(async () => { screen.getByTestId('scan-stage').click() })
+    expect(thumbCell('U', 0)).toBe(rgbOf(COLOR_HEX.W))
+  })
+
   it('clicked cell shows active highlight; manual fix clears the low-confidence border', async () => {
     scanFace.mockReturnValue(LOW_U)
     mount()

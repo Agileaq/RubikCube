@@ -246,18 +246,20 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
               }))}
             </div>
             <OrientationCross face={face} />
-            {fixing !== null && (
-              <div className="scan-fix" data-testid="scan-fix">
-                {COLOR_ORDER.map(col => (
-                  <button key={col} className="chip" data-color={col} aria-label={name(col)}
-                    style={{ background: COLOR_HEX[col] }}
-                    onClick={() => {
-                      setOverrides(o => ({ ...o, [fixing]: col }))
-                      setFixing(null)
-                    }} />
-                ))}
-              </div>
-            )}
+            {/* 色圆常驻：避免点选色块时下方内容出现/消失造成页面抖动；
+                未选中色块时点按不做任何修改 */}
+            <div className="scan-fix" data-testid="scan-fix">
+              {COLOR_ORDER.map(col => (
+                <button key={col} className="chip" data-color={col} aria-label={name(col)}
+                  style={{ background: COLOR_HEX[col] }}
+                  onClick={() => {
+                    if (fixing === null) return
+                    const target = fixing
+                    setOverrides(o => ({ ...o, [target]: col }))
+                    setFixing(null)
+                  }} />
+              ))}
+            </div>
             <div className="scanner-actions">
               <button className="solve-link" data-testid="scan-retake" onClick={retake}>{t.scan.retake}</button>
               <button className="solve-link" data-testid="scan-stage" disabled={!complete} onClick={stage}>{t.scan.addFace}</button>
