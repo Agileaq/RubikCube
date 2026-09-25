@@ -1,9 +1,10 @@
 import type { Color, Face, CubeState, Orientation } from '../types'
 
 export const FACES: Face[] = ['U', 'D', 'L', 'R', 'F', 'B']
-// 拍色枢纽的槽位顺序（用户指定）：第一排 白/橙/绿（U/L/F，默认视角三面），
-// 第二排 红/蓝/黄（R/B/D）。也用于「下一个待拍面」的自动预选顺序。
-export const SCAN_FACE_ORDER: Face[] = ['U', 'L', 'F', 'R', 'B', 'D']
+// 拍色枢纽的槽位顺序（用户实测的滚动路径）：第一排 白/红/蓝（U/R/B），
+// 第二排 黄/绿/橙（D/F/L）。按此顺序拍摄，相邻两面恰好只需单次 90° 滚动即可
+// 拍全六面（见 cube.test.ts 的滚动路径校验）。也用于「下一个待拍面」的自动预选。
+export const SCAN_FACE_ORDER: Face[] = ['U', 'R', 'B', 'D', 'F', 'L']
 export const COLORS: Color[] = ['W', 'R', 'O', 'Y', 'G', 'B']
 
 // Fixed color scheme — standard Western: opposite pairs are White↔Yellow,
@@ -24,6 +25,32 @@ export const ADJACENT: Record<Face, { up: Face; right: Face; down: Face; left: F
   B: { up: 'U', right: 'L', down: 'D', left: 'R' },
   L: { up: 'U', right: 'F', down: 'D', left: 'B' },
   R: { up: 'U', right: 'B', down: 'D', left: 'F' },
+}
+
+// 扫描时的正面视角：按 SCAN_FACE_ORDER 单次滚动拍摄时，相机所见的四边邻面。
+// 与 ADJACENT（标准朝向，绑定 cubie.ts 面片索引）不同——这里描述用户实际握持
+// 朝向；写入仓库前需按 SCAN_ROT 把采样格旋回标准朝向。
+export const SCAN_VIEW: Record<Face, { up: Face; right: Face; down: Face; left: Face }> = {
+  U: { up: 'B', right: 'R', down: 'F', left: 'L' },
+  R: { up: 'B', right: 'D', down: 'F', left: 'U' },
+  B: { up: 'L', right: 'D', down: 'R', left: 'U' },
+  D: { up: 'L', right: 'F', down: 'R', left: 'B' },
+  F: { up: 'L', right: 'U', down: 'R', left: 'D' },
+  L: { up: 'B', right: 'U', down: 'F', left: 'D' },
+}
+
+// 采样格 → 标准（ADJACENT）布局需要顺时针旋转的 90° 次数（0..3）
+export const SCAN_ROT: Record<Face, number> = { U: 0, R: 1, B: 1, D: 3, F: 3, L: 3 }
+
+// 把 3×3 平铺数组顺时针旋转 turns 个 90°（turns 归一化到 0..3）
+export function rotateFlat<T>(cells: T[], turns: number): T[] {
+  const t = ((turns % 4) + 4) % 4
+  let out = cells.slice()
+  for (let n = 0; n < t; n++) {
+    const prev = out
+    out = [6, 3, 0, 7, 4, 1, 8, 5, 2].map(i => prev[i])
+  }
+  return out
 }
 
 export function emptyCube(): CubeState {

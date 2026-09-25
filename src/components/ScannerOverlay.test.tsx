@@ -119,7 +119,7 @@ describe('ScannerOverlay', () => {
     expect((screen.getByTestId('scan-confirm-all') as HTMLButtonElement).disabled).toBe(false)
     // 拍色顺序（SCAN_FACE_ORDER）第一个未填满的面（空仓 → U）自动预选
     expect(screen.getByTestId('scan-face-U').getAttribute('aria-pressed')).toBe('true')
-    // 槽位顺序：第一排 白/橙/绿（U/L/F），第二排 红/蓝/黄（R/B/D）
+    // 槽位顺序：第一排 白/红/蓝（U/R/B），第二排 黄/绿/橙（D/F/L）
     const chips = screen.getAllByTestId(/^(scan-face-[UDLRFB]|scan-thumb-[UDLRFB])$/)
     const rendered = chips.map(el => (el as HTMLElement).getAttribute('data-testid')!.replace('scan-thumb-', '').replace('scan-face-', ''))
     expect(rendered).toEqual([...SCAN_FACE_ORDER])
@@ -143,8 +143,8 @@ describe('ScannerOverlay', () => {
     expect(screen.getByTestId('scan-face-done-U')).toBeTruthy()
     expect(screen.getByTestId('scan-thumb-U')).toBeTruthy()
     expect(screen.getByTestId('scan-thumb-U').getAttribute('aria-pressed')).toBe('false')
-    // U 满 → 拍色顺序下一个是 L（不是 D）
-    expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
+    // U 满 → 拍色顺序下一个是 R
+    expect(screen.getByTestId('scan-face-R').getAttribute('aria-pressed')).toBe('true')
   })
 
   it('partially filled face shows its stored colors in the hub (nulls fall back to center color)', async () => {
@@ -169,13 +169,13 @@ describe('ScannerOverlay', () => {
     pickFace('F')
     const dotBg = (dir: string) =>
       (screen.getByTestId('scan-cross').querySelector(`[data-dir="${dir}"]`) as HTMLElement).style.background
-    // F 面正面视角：中心 G；上 U(W)、右 R、下 D(Y)、左 L(O) —— ADJACENT[F]
+    // F 面按滚动路径的相机视角：中心 G；上 L(O)、右 U(W)、下 R(R)、左 D(Y) —— SCAN_VIEW[F]
     expect(screen.getByTestId('scan-cross').querySelectorAll('i')).toHaveLength(5)
     expect(dotBg('center')).toBe(rgbOf(COLOR_HEX.G))
-    expect(dotBg('up')).toBe(rgbOf(COLOR_HEX.W))
-    expect(dotBg('right')).toBe(rgbOf(COLOR_HEX.R))
-    expect(dotBg('down')).toBe(rgbOf(COLOR_HEX.Y))
-    expect(dotBg('left')).toBe(rgbOf(COLOR_HEX.O))
+    expect(dotBg('up')).toBe(rgbOf(COLOR_HEX.O))
+    expect(dotBg('right')).toBe(rgbOf(COLOR_HEX.W))
+    expect(dotBg('down')).toBe(rgbOf(COLOR_HEX.R))
+    expect(dotBg('left')).toBe(rgbOf(COLOR_HEX.Y))
   })
 
   it('加入 stages the scanned face; confirm-all writes it to the store and closes', async () => {
@@ -186,16 +186,16 @@ describe('ScannerOverlay', () => {
     pickFace('D')
     await upload()
     await stageIt()
-    // 回到枢纽：D 显示迷你缩略图，格色 = 扫描结果（空中心格显中心色）
-    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.Y))
-    expect(thumbCell('D', 2)).toBe(rgbOf(COLOR_HEX.O))
+    // 回到枢纽：D 显示迷你缩略图，格色 = 旋回标准布局后的结果（空中心格显中心色）
+    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.O))
+    expect(thumbCell('D', 2)).toBe(rgbOf(COLOR_HEX.R))
     expect(thumbCell('D', 4)).toBe(rgbOf(COLOR_HEX.Y))
-    // U 已满、D 已暂存 → 自动预选 L；暂存 ≥1 → 总确认可用
-    expect(screen.getByTestId('scan-face-L').getAttribute('aria-pressed')).toBe('true')
+    // U 已满、D 已暂存 → 自动预选 R；暂存 ≥1 → 总确认可用
+    expect(screen.getByTestId('scan-face-R').getAttribute('aria-pressed')).toBe('true')
     const all = screen.getByTestId('scan-confirm-all') as HTMLButtonElement
     expect(all.disabled).toBe(false)
     await act(async () => { all.click() })
-    expect(screen.getByTestId('probe-D').textContent).toBe('YGORBWGR')
+    expect(screen.getByTestId('probe-D').textContent).toBe('OBRGGYRW')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -207,15 +207,15 @@ describe('ScannerOverlay', () => {
     pickFace('D')
     await upload()
     await stageIt()
-    // L 已被自动预选（U 满、D 已暂存），直接点 chip 进扫描
+    // 自动预选 R（U 满、D 已暂存）；这里手动改拍 L
     pickFace('L')
     await upload()
     await stageIt()
     expect(screen.getByTestId('scan-thumb-D')).toBeTruthy()
     expect(screen.getByTestId('scan-thumb-L')).toBeTruthy()
     await act(async () => { screen.getByTestId('scan-confirm-all').click() })
-    expect(screen.getByTestId('probe-D').textContent).toBe('YGORBWGR')
-    expect(screen.getByTestId('probe-L').textContent).toBe('OGWBRYOG')
+    expect(screen.getByTestId('probe-D').textContent).toBe('OBRGGYRW')
+    expect(screen.getByTestId('probe-L').textContent).toBe('WRGGOOBY')
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -226,17 +226,17 @@ describe('ScannerOverlay', () => {
     pickFace('D')
     await upload()
     await stageIt()
-    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.Y))
+    expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.O))
     // 点缩略图重扫同一面，再次「加入」覆盖暂存
     await act(async () => { screen.getByTestId('scan-thumb-D').click() })
     await upload()
     await stageIt()
     expect(thumbCell('D', 0)).toBe(rgbOf(COLOR_HEX.R))
-    expect(thumbCell('D', 7)).toBe(rgbOf(COLOR_HEX.W))
+    expect(thumbCell('D', 7)).toBe(rgbOf(COLOR_HEX.G))
     // 总确认前不写 store
     expect(screen.getByTestId('probe-D').textContent).toBe('--------')
     await act(async () => { screen.getByTestId('scan-confirm-all').click() })
-    expect(screen.getByTestId('probe-D').textContent).toBe('RRRGGWWW')
+    expect(screen.getByTestId('probe-D').textContent).toBe('RGWRWRGW')
   })
 
   it('rotate button is gone; cross still rendered in the result view', async () => {
@@ -248,6 +248,18 @@ describe('ScannerOverlay', () => {
     await screen.findByTestId('scan-grid')
     expect(screen.queryByTestId('scan-rotate')).toBeNull()
     expect(screen.getByTestId('scan-cross')).toBeTruthy()
+  })
+
+  it('staged colors are rotated into the standard layout (R view is 90° clockwise)', async () => {
+    // R 相机视角：上蓝 下绿 左白 右黄；采样格需顺时针 90° 旋回标准朝向
+    scanFace.mockReturnValue(asResult(['B', 'B', 'B', 'W', 'R', 'Y', 'G', 'G', 'G'], 'R'))
+    mount()
+    await screen.findByText('选择要拍的面')
+    pickFace('R')
+    await upload()
+    await stageIt()
+    await act(async () => { screen.getByTestId('scan-confirm-all').click() })
+    expect(screen.getByTestId('probe-R').textContent).toBe('GWBGBGYB')
   })
 
   it('scanned center ≠ selected face center still shows the mismatch warning', async () => {

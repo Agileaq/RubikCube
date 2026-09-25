@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ADJACENT, CENTERS, FACES, emptyCube, solvedCube, cloneCube, remainingCounts, isFull, visibleFaces } from './cube'
+import { ADJACENT, CENTERS, FACES, SCAN_FACE_ORDER, SCAN_ROT, SCAN_VIEW, emptyCube, solvedCube, cloneCube, remainingCounts, isFull, visibleFaces, rotateFlat } from './cube'
 import type { Face } from '../types'
 
 describe('cube model', () => {
@@ -133,5 +133,78 @@ describe('ADJACENT (face-on viewing orientation)', () => {
     expect(ADJACENT.R.right).toBe('B')
     expect(ADJACENT.R.down).toBe('D')
     expect(ADJACENT.R.left).toBe('F')
+  })
+})
+
+// 扫描朝向：SCAN_VIEW 描述按 SCAN_FACE_ORDER 拍摄时相机所见的四边邻面，须满足
+// 「相邻两面恰好单次 90° 滚动」；SCAN_ROT 把采样格旋回标准（ADJACENT）布局。
+describe('scan view (single-roll capture path)', () => {
+  const OPP: Record<Face, Face> = { U: 'D', D: 'U', L: 'R', R: 'L', F: 'B', B: 'F' }
+  const DIRS = ['up', 'right', 'down', 'left'] as const
+
+  it('SCAN_FACE_ORDER visits all six faces exactly once', () => {
+    expect([...SCAN_FACE_ORDER].sort()).toEqual([...FACES].sort())
+  })
+
+  it('SCAN_VIEW crosses are mutually consistent (same invariants as ADJACENT)', () => {
+    for (const f of FACES) {
+      const cross = DIRS.map(d => SCAN_VIEW[f][d])
+      expect(new Set(cross).size).toBe(4)
+      for (const g of cross) {
+        expect(g).not.toBe(f)
+        expect(g).not.toBe(OPP[f])
+        expect(Object.values(SCAN_VIEW[g])).toContain(f)
+      }
+    }
+  })
+
+  it('each consecutive pair is exactly one 90° roll', () => {
+    const rot = (m: number[][], v: number[]) =>
+      m.map(row => row[0] * v[0] + row[1] * v[1] + row[2] * v[2])
+    const ROLLS: number[][][] = [
+      [[1, 0, 0], [0, 0, -1], [0, 1, 0]],
+      [[1, 0, 0], [0, 0, 1], [0, -1, 0]],
+      [[0, 0, 1], [0, 1, 0], [-1, 0, 0]],
+      [[0, 0, -1], [0, 1, 0], [1, 0, 0]],
+    ]
+    const orientOf = (f: Face) => {
+      const v = SCAN_VIEW[f]
+      return {
+        [f]: [0, 0, 1], [v.up]: [0, 1, 0], [v.right]: [1, 0, 0],
+        [OPP[f]]: [0, 0, -1], [OPP[v.up]]: [0, -1, 0], [OPP[v.right]]: [-1, 0, 0],
+      } as Record<Face, number[]>
+    }
+    for (let i = 0; i + 1 < SCAN_FACE_ORDER.length; i++) {
+      const a = orientOf(SCAN_FACE_ORDER[i])
+      const b = orientOf(SCAN_FACE_ORDER[i + 1])
+      const rollable = ROLLS.some(m => {
+        const o = Object.fromEntries(FACES.map(f => [f, rot(m, a[f])])) as Record<Face, number[]>
+        return FACES.every(f => o[f].join() === b[f].join())
+      })
+      expect(rollable, `${SCAN_FACE_ORDER[i]} -> ${SCAN_FACE_ORDER[i + 1]}`).toBe(true)
+    }
+  })
+
+  it('rotateFlat rotates a 3×3 flat array clockwise and is cyclic', () => {
+    const g = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']
+    expect(rotateFlat(g, 1)).toEqual(['g', 'd', 'a', 'h', 'e', 'b', 'i', 'f', 'c'])
+    expect(rotateFlat(g, 4)).toEqual(g)
+    expect(rotateFlat(rotateFlat(g, 3), 1)).toEqual(g)
+  })
+
+  it('SCAN_ROT turns each captured view into the standard ADJACENT layout', () => {
+    // 边中格贴的是哪个邻面：标准布局 vs 相机所见。旋转 SCAN_ROT 后应与标准一致。
+    for (const f of FACES) {
+      const captured = Array(9).fill(null) as (Face | null)[]
+      captured[1] = SCAN_VIEW[f].up
+      captured[3] = SCAN_VIEW[f].left
+      captured[5] = SCAN_VIEW[f].right
+      captured[7] = SCAN_VIEW[f].down
+      const rot = rotateFlat(captured, SCAN_ROT[f])
+      expect(rot[1]).toBe(ADJACENT[f].up)
+      expect(rot[3]).toBe(ADJACENT[f].left)
+      expect(rot[5]).toBe(ADJACENT[f].right)
+      expect(rot[7]).toBe(ADJACENT[f].down)
+    }
   })
 })

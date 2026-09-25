@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useI18n } from '../i18n'
 import { COLOR_HEX, COLOR_ORDER } from '../lib/colors'
-import { ADJACENT, CENTERS, FACES, SCAN_FACE_ORDER } from '../lib/cube'
+import { CENTERS, FACES, SCAN_FACE_ORDER, SCAN_ROT, SCAN_VIEW, rotateFlat } from '../lib/cube'
 import { useApp } from '../state/useApp'
 import { grabVideoFrame, imageDataFromFile } from '../lib/scan/capture'
 import { scanFace, type ScanResult, type ScanCell } from '../lib/scan/pipeline'
@@ -15,16 +15,17 @@ type Staged = Partial<Record<Face, (Color | null)[]>>
 
 // 面是否已填满（8 个非中心格全部有值）
 const faceDone = (cube: CubeState, f: Face) => cube[f].every((x, i) => i === 4 || x !== null)
-// 打开时自动预选：拍色顺序（SCAN_FACE_ORDER：白橙绿/红蓝黄）第一个未填满的面；全部填满则回退 U
+// 打开时自动预选：拍色顺序（SCAN_FACE_ORDER：白红蓝/黄绿橙）第一个未填满的面；全部填满则回退 U
 const firstPick = (cube: CubeState): Face => SCAN_FACE_ORDER.find(f => !faceDone(cube, f)) ?? 'U'
 // 加入后回到枢纽：拍色顺序第一个「未暂存且未填满」的面；没有则保留刚扫的面
 const nextPick = (cube: CubeState, staged: Staged, last: Face): Face =>
   SCAN_FACE_ORDER.find(f => !staged[f] && !faceDone(cube, f)) ?? last
 
-// 方位提示十字：中心点=该面中心色，四臂=标准面向视角下各边相邻面的中心色
+// 方位提示十字：中心点=该面中心色，四臂=按滚动路径拍摄时所见的各边邻面中心色
 // （修订 2：按十字握持魔方即可对齐朝向，取代旋转按钮；纯视觉，无文字）
+// 采用 SCAN_VIEW（而非标准 ADJACENT），使相邻两面单次滚动后十字正好对上
 function OrientationCross({ face }: { face: Face }) {
-  const a = ADJACENT[face]
+  const a = SCAN_VIEW[face]
   const dots = [
     { dir: 'center', row: 2, col: 2, hex: COLOR_HEX[CENTERS[face]] },
     { dir: 'up', row: 1, col: 2, hex: COLOR_HEX[CENTERS[a.up]] },
@@ -100,7 +101,8 @@ export function ScannerOverlay({ onClose }: { onClose(): void }) {
   const stage = () => {
     if (!complete) return
     const next: Staged = { ...staged }
-    next[face] = flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color))
+    // 采样格按该面视角旋回标准布局后再入库（显示仍保留原始拍照格）
+    next[face] = rotateFlat(flat.map((c, i) => (i === 4 ? null : overrides[i] ?? c!.color)), SCAN_ROT[face])
     setStaged(next)
     selectFace(nextPick(cube, next, face))
     setResult(null); setBrush(null); setOverrides({})
